@@ -216,7 +216,9 @@ export function ChatThread({
                     highlightedSeq={highlightedSeq}
                     scrollerRef={scroller}
                     onReadUpTo={(seq) => {
-                        if (seq > data.myLastReadSeq) markRead(seq);
+                        // A request is not marked read until it is accepted (the server keeps its sender from
+                        // seeing it was read), so nothing is reported while it is one.
+                        if (!data.isRequest && seq > data.myLastReadSeq) markRead(seq);
                     }}
                     onReply={(message) => {
                         setMode({ type: 'reply', message });

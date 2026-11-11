@@ -110,6 +110,24 @@ describe('day and time labels', () => {
         );
     });
 
+    it('names days and months from the namespace where the browser has no data for the locale', () => {
+        const t = (key: string, values?: Record<string, unknown>): string =>
+            values === undefined ? (key.split('.').at(-1) ?? key) : `${key} ${JSON.stringify(values)}`;
+        const own = { locale: 'ka', timeZone: TBILISI, now: NOW, hasLocaleData: false };
+
+        expect(formatDayLabel('2026-11-08T09:00:00.000Z', t, own)).toBe(
+            'chat.date.weekday-day-month {"weekday":"sun","day":8,"month":"nov"}',
+        );
+        expect(formatDayLabel('2025-03-02T09:00:00.000Z', t, own)).toBe(
+            'chat.date.day-month-year {"day":2,"month":"mar","year":"2025"}',
+        );
+        expect(formatInboxTime('2026-11-07T08:05:00.000Z', t, own)).toBe('sat');
+        expect(formatInboxTime('2026-11-11T08:05:00.000Z', t, own)).toBe('12:05');
+        expect(formatLastActive('2026-10-01T09:00:00.000Z', t, own)).toBe(
+            'chat.presence.last-active {"when":"chat.date.day-month {\\"day\\":1,\\"month\\":\\"oct\\"}"}',
+        );
+    });
+
     it('says when somebody was last active in the reader’s language', () => {
         expect(formatLastActive('2026-11-11T11:59:30.000Z', keyTranslate, { locale: 'ru', now: NOW })).toBe(
             'chat.presence.just-now',
@@ -160,6 +178,28 @@ describe('excerpts and notices', () => {
             'Nino added Giorgi',
         );
         expect(systemNoticeText('chat.system.taxi-from-the-future', null, known)).toBe('A change');
+    });
+
+    it('never shows a notice’s pattern with holes in it when its variables were not sent', () => {
+        // What an app's translate returns for a pattern it could not fill: the pattern itself.
+        const pattern = (key: string): string =>
+            key === 'chat.system.group-created'
+                ? '{actor} created the group'
+                : key === 'chat.system.unknown'
+                  ? 'A change'
+                  : key;
+        const preview = {
+            seq: 1,
+            kind: ChatMessageKind.SYSTEM,
+            excerpt: null,
+            systemKey: 'chat.system.group-created',
+            senderName: null,
+            isOwn: false,
+            isDeleted: false,
+            sentAt: NOW.toISOString(),
+        };
+
+        expect(lastMessageExcerpt(preview, pattern, { isGroup: true })).toBe('A change');
     });
 });
 

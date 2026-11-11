@@ -16,7 +16,9 @@ import type { ChatTranslate } from '../i18n/index.js';
 export function systemNoticeText(key: string, variables: Nullable<Record<string, string>>, t: ChatTranslate): string {
     const text = t(key, variables ?? undefined);
 
-    return text === key ? t('chat.system.unknown') : text;
+    // An unresolved `{actor}` means the variables were not sent (an inbox preview carries none): the words
+    // would be a pattern with holes in it, so the neutral notice is shown instead.
+    return text === key || /\{[A-Za-z]/u.test(text) ? t('chat.system.unknown') : text;
 }
 
 /** What a message is, in one word, when it has no text of its own to show. */

@@ -140,7 +140,12 @@ export function MessageActions({
                             onKeyDown={(event) => {
                                 if (event.key === 'Escape') setIsPicking(false);
                             }}
-                            className="absolute bottom-full start-1/2 z-40 mb-2 flex -translate-x-1/2 animate-scale-in gap-0.5 rounded-full border border-line bg-surface p-1 shadow-lg rtl:translate-x-1/2"
+                            // Anchored on the side where the thread has room: a picker centred on the button was
+                            // cut off by the thread's edge on somebody else's message.
+                            className={cn(
+                                'absolute bottom-full z-40 mb-2 flex animate-scale-in gap-0.5 rounded-full border border-line bg-surface p-1 shadow-lg',
+                                message.isOwn ? 'end-0' : 'start-0',
+                            )}
                         >
                             {CHAT_QUICK_REACTIONS.map((emoji) => (
                                 <button
