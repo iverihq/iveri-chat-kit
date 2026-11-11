@@ -1,8 +1,9 @@
 # @iveri/chat-kit
 
-Baasi conversations for every Iveri product: a headless client with React hooks, and ready components for React
-on the web and React Native. Baasi's own site and app are built from it, and a product drops it into its own
-screens (Taxi's ride, Ezo's Messages).
+Baasi conversations for every Iveri product, and for a customer's own app: a headless client with React hooks, and
+ready components for React on the web and React Native. Baasi's own site and app are built from it, a product drops
+it into its own screens (Taxi's ride, Ezo's Messages), and a company with its own users and sign-in mounts it the same
+way (see [In a customer's app](#in-a-customers-app)).
 
 ```text
 @iveri/chat-kit          the HTTP client, ChatProvider, TanStack Query hooks, the realtime connection, pure helpers
@@ -33,7 +34,7 @@ const chatClient = createChatClient({
         realtimeUrl={import.meta.env.VITE_CHAT_REALTIME_URL} // optional: without it the kit polls
         locale={locale}
         translate={t} // the app's own t, which has pulled the chat-kit namespace
-        currentUserId={session.userId}
+        currentUserId={session.userId} // optional: left out, it is read from GET /me
     >
         …
     </ChatProvider>
@@ -53,6 +54,43 @@ app's palette: Ezo's courtyard colours apply with no Ezo code here.
 
 `ChatInbox` and `ChatThread` are separate so a desktop page can show both side by side and a phone one at a time
 (`onBack` puts a back button in the thread's header).
+
+## In a customer's app
+
+A company that sells its own product and has its own users mounts the kit exactly as above. Nothing in the kit assumes
+Iveri's identity service: **the token and its refresh are the app's**, and the kit never reads inside the token.
+
+```tsx
+const chatClient = createChatClient({
+    baseUrl: 'https://chat.example/api/v1',
+    // The token the customer's server signed with its app secret (or minted at POST /server/tokens).
+    getAccessToken: () => chatTokenStore.current(),
+    // On a 401 the kit asks once for a fresh one, then retries. Fetch it from the customer's own server,
+    // single-flight; return false when the user is signed out.
+    onUnauthorized: () => chatTokenStore.refreshFromOwnServer(),
+});
+
+<ChatProvider
+    client={chatClient}
+    realtimeUrl="https://chat-realtime.example"
+    realtimeTicket
+    locale={locale}
+    translate={t}
+>
+    …
+</ChatProvider>;
+```
+
+- **`realtimeTicket`** (default off) makes the socket present a **ticket** instead of the token. Before every
+  connection attempt, the first and each reconnect, the kit calls `chat-api`'s `POST /realtime/ticket` with the current
+  token and presents the `ticket` it answers. A customer's app needs it: its users' tokens are signed with an app
+  secret only `chat-api` holds, so `chat-realtime` cannot verify them itself. **A ticket that does not arrive is the
+  socket being down**: the attempt is abandoned, the poll carries on, and the kit tries again on capped delays for as
+  long as a screen holds the connection. Iveri's own products present identity tokens and leave it off.
+- **`currentUserId` may be left out.** A customer's user is known to Baasi by an id derived from the app's own user id,
+  so the kit reads it from `GET /me` (`userId`) rather than asking the app to compute it. Until that answers, nothing is
+  drawn as the reader's own.
+- `client.createRealtimeTicket()` is the same exchange, for an app that opens its own socket.
 
 ## Strings
 
@@ -100,7 +138,8 @@ translated title leads. `conversationHeading()` is that rule, used by both compo
 ## Realtime and the poll
 
 `useChatRealtime()` (called by `ChatInbox` and `ChatThread`) holds one socket per provider to `<realtimeUrl>/chat`,
-presenting the current token on every connection attempt. A frame invalidates exactly what it names; the thread then
+presenting the current token on every connection attempt (or, with `realtimeTicket`, a ticket fetched for that
+attempt). A frame invalidates exactly what it names; the thread then
 fetches what is after the newest `seq` it holds and re-reads its tail (edits and reactions do not move the `seq`). When
 the gateway closes the socket with `TOKEN_EXPIRED` the session is refreshed through `onUnauthorized` and the socket
 reconnects; `UNAUTHENTICATED` and `FORBIDDEN` stop it. The poll stays: an open conversation every 5 s and the inbox

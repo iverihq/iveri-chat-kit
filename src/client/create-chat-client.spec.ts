@@ -21,6 +21,46 @@ describe('createChatClient', () => {
         expect(stub.requests[0].query.toString()).toBe('folder=requests&product=social');
     });
 
+    it("exchanges the current token for a socket ticket at chat-api's /realtime/ticket", async () => {
+        const stub = createFetchStub();
+        stub.on('POST', '/realtime/ticket', () => ({
+            status: 201,
+            body: { ticket: 'the-ticket', expiresAt: '2026-11-12T12:00:00.000Z' },
+        }));
+        const client = createChatClient({ baseUrl: BASE, getAccessToken: () => 'app-token', fetch: stub.fetch });
+
+        await expect(client.createRealtimeTicket()).resolves.toEqual({
+            ticket: 'the-ticket',
+            expiresAt: '2026-11-12T12:00:00.000Z',
+        });
+        expect(stub.requests[0]).toMatchObject({ method: 'POST', authorization: 'Bearer app-token' });
+    });
+
+    it('works with whatever issues the token, which the app supplies and the kit never reads', async () => {
+        // A customer's app: its own server signs the token, its own refresh fetches a new one.
+        const stub = createFetchStub();
+        let token = 'customer-signed-1';
+        stub.on('GET', '/me', (request) =>
+            request.authorization === 'Bearer customer-signed-2'
+                ? { body: { userId: 'app-user' } }
+                : { status: 401, body: { success: false, error: { code: 'TOKEN_EXPIRED', message: 'expired' } } },
+        );
+        const client = createChatClient({
+            baseUrl: BASE,
+            getAccessToken: () => Promise.resolve(token),
+            onUnauthorized: () => {
+                token = 'customer-signed-2';
+            },
+            fetch: stub.fetch,
+        });
+
+        await expect(client.getProfile()).resolves.toEqual({ userId: 'app-user' });
+        expect(stub.requests.map((request) => request.authorization)).toEqual([
+            'Bearer customer-signed-1',
+            'Bearer customer-signed-2',
+        ]);
+    });
+
     it('refreshes once on a 401 and retries with the new token', async () => {
         const stub = createFetchStub();
         let token = 'expired';

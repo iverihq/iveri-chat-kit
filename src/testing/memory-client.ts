@@ -305,6 +305,8 @@ export function createMemoryClient(copy: GalleryCopy, now: Date): ChatClient {
     return {
         getAccessToken: () => ok('gallery'),
         refreshAccessToken: () => ok(true),
+        createRealtimeTicket: () =>
+            ok({ ticket: 'gallery-ticket', expiresAt: new Date(Date.now() + 3_600_000).toISOString() }),
         getProfile: () =>
             ok({
                 userId: ME,

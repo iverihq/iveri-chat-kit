@@ -13,10 +13,15 @@ import { conversationPollInterval, inboxPollInterval } from './poll-interval.js'
 import { ChatRealtimeConnection } from './realtime-connection.js';
 import { ChatTypingStore, TYPING_EXPIRY_MS } from './typing-store.js';
 
-function stubClient(tokens: string[], refreshes: boolean): ChatClient {
+function stubClient(
+    tokens: string[],
+    refreshes: boolean,
+    createRealtimeTicket: () => Promise<{ ticket: string; expiresAt: string }> = vi.fn(),
+): ChatClient {
     let index = 0;
 
     return {
+        createRealtimeTicket,
         getAccessToken: () => Promise.resolve(tokens[Math.min(index, tokens.length - 1)]),
         refreshAccessToken: vi.fn(() => {
             index += 1;
@@ -147,6 +152,158 @@ describe('ChatRealtimeConnection', () => {
 
         expect(sockets[0].connectCalls).toBe(0);
         expect(connection.getStatus()).toBe('disconnected');
+    });
+});
+
+describe('ChatRealtimeConnection with a socket ticket', () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+    });
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    const ticketsInTurn = (): ReturnType<typeof vi.fn<() => Promise<{ ticket: string; expiresAt: string }>>> => {
+        let issued = 0;
+
+        return vi.fn(() => {
+            issued += 1;
+
+            return Promise.resolve({ ticket: `ticket-${String(issued)}`, expiresAt: '2026-11-12T12:00:00.000Z' });
+        });
+    };
+
+    it('presents a fresh ticket from chat-api on every attempt, never the token itself', async () => {
+        const { factory, sockets } = fakeSocketFactory();
+        const createRealtimeTicket = ticketsInTurn();
+        const connection = new ChatRealtimeConnection({
+            url: 'http://rt.test',
+            client: stubClient(['app-token'], true, createRealtimeTicket),
+            useTicket: true,
+            socketFactory: factory,
+            onFrame: () => undefined,
+            onReady: () => undefined,
+        });
+        connection.acquire();
+
+        await expect(sockets[0].presentedToken()).resolves.toBe('ticket-1');
+        // A reconnect, Socket.IO's own or ours, asks again: a kept ticket may have expired with its token.
+        await expect(sockets[0].presentedToken()).resolves.toBe('ticket-2');
+        expect(createRealtimeTicket).toHaveBeenCalledTimes(2);
+    });
+
+    it('is off by default, which presents the token and asks chat-api for nothing', async () => {
+        const { factory, sockets } = fakeSocketFactory();
+        const createRealtimeTicket = ticketsInTurn();
+        const connection = new ChatRealtimeConnection({
+            url: 'http://rt.test',
+            client: stubClient(['identity-token'], true, createRealtimeTicket),
+            socketFactory: factory,
+            onFrame: () => undefined,
+            onReady: () => undefined,
+        });
+        connection.acquire();
+
+        await expect(sockets[0].presentedToken()).resolves.toBe('identity-token');
+        expect(createRealtimeTicket).not.toHaveBeenCalled();
+    });
+
+    it('treats a ticket that does not arrive as the socket being down, and keeps trying while held', async () => {
+        const { factory, sockets } = fakeSocketFactory();
+        const createRealtimeTicket = vi.fn(() => Promise.reject(new Error('chat-api is not answering')));
+        const connection = new ChatRealtimeConnection({
+            url: 'http://rt.test',
+            client: stubClient(['app-token'], true, createRealtimeTicket),
+            useTicket: true,
+            socketFactory: factory,
+            onFrame: () => undefined,
+            onReady: () => undefined,
+        });
+        connection.acquire();
+
+        // Further than the eight attempts an expired session gets: an outage is waited out.
+        for (let attempt = 1; attempt <= 10; attempt += 1) {
+            sockets[0].attempt();
+            await vi.advanceTimersByTimeAsync(0);
+            // Abandoned, never sent empty: the gateway would call an empty credential final.
+            expect(sockets[0].disconnectCalls).toBe(attempt);
+            expect(connection.getStatus()).toBe('disconnected');
+            await vi.advanceTimersByTimeAsync(30_000);
+            expect(sockets[0].connectCalls).toBe(attempt);
+        }
+
+        expect(createRealtimeTicket).toHaveBeenCalledTimes(10);
+    });
+
+    it('comes back once a ticket arrives again', async () => {
+        const { factory, sockets } = fakeSocketFactory();
+        const createRealtimeTicket = vi
+            .fn<() => Promise<{ ticket: string; expiresAt: string }>>()
+            .mockRejectedValueOnce(new Error('down'))
+            .mockResolvedValue({ ticket: 'ticket-ok', expiresAt: '2026-11-12T12:00:00.000Z' });
+        const onReady = vi.fn();
+        const connection = new ChatRealtimeConnection({
+            url: 'http://rt.test',
+            client: stubClient(['app-token'], true, createRealtimeTicket),
+            useTicket: true,
+            socketFactory: factory,
+            onFrame: () => undefined,
+            onReady,
+        });
+        connection.acquire();
+
+        sockets[0].attempt();
+        await vi.advanceTimersByTimeAsync(1_000);
+        expect(sockets[0].connectCalls).toBe(1);
+
+        await expect(sockets[0].presentedToken()).resolves.toBe('ticket-ok');
+        sockets[0].emit(CHAT_SOCKET_EVENT.READY, {});
+        expect(connection.getStatus()).toBe('connected');
+        expect(onReady).toHaveBeenCalledTimes(1);
+    });
+
+    it('stops trying once the last screen lets go', async () => {
+        const { factory, sockets } = fakeSocketFactory();
+        const connection = new ChatRealtimeConnection({
+            url: 'http://rt.test',
+            client: stubClient(['app-token'], true, () => Promise.reject(new Error('down'))),
+            useTicket: true,
+            socketFactory: factory,
+            onFrame: () => undefined,
+            onReady: () => undefined,
+        });
+        const release = connection.acquire();
+
+        sockets[0].attempt();
+        await vi.advanceTimersByTimeAsync(0);
+        release();
+        await vi.advanceTimersByTimeAsync(60_000);
+
+        expect(sockets[0].connectCalls).toBe(0);
+        expect(connection.getStatus()).toBe('off');
+    });
+
+    it('refreshes the session on TOKEN_EXPIRED and reconnects with a ticket for the new token', async () => {
+        const { factory, sockets } = fakeSocketFactory();
+        const client = stubClient(['old', 'new'], true, ticketsInTurn());
+        const connection = new ChatRealtimeConnection({
+            url: 'http://rt.test',
+            client,
+            useTicket: true,
+            socketFactory: factory,
+            onFrame: () => undefined,
+            onReady: () => undefined,
+        });
+        connection.acquire();
+        await expect(sockets[0].presentedToken()).resolves.toBe('ticket-1');
+        sockets[0].emit(CHAT_SOCKET_EVENT.READY, {});
+
+        sockets[0].emit(CHAT_SOCKET_EVENT.ERROR, { code: ErrorCode.TOKEN_EXPIRED, message: 'expired' });
+        await vi.runAllTimersAsync();
+
+        expect(client.refreshAccessToken).toHaveBeenCalledTimes(1);
+        expect(sockets[0].connectCalls).toBe(1);
+        await expect(sockets[0].presentedToken()).resolves.toBe('ticket-2');
     });
 });
 
