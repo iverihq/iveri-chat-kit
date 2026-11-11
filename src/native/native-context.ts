@@ -1,6 +1,8 @@
 import { color, radius } from '@iveri/tokens';
 import { createContext, useContext } from 'react';
 
+import type { ChatUploadFile } from '../client/index.js';
+
 /** The colours and radii the native components draw with. The app's palette, or the fleet's by default. */
 export interface ChatNativeTheme {
     color: { [Key in keyof typeof color]: string };
@@ -18,6 +20,12 @@ export interface ChatPickedFile {
     /** The MIME type. */
     type: string;
     size: number;
+    /**
+     * The file itself, on the **web build** only. A browser's `FormData` cannot send `{ uri, name, type }`,
+     * which is React Native's shape; Expo's pickers give the `File` there (`asset.file`). Without it the kit
+     * reads the picker's `blob:` or `data:` address itself.
+     */
+    file?: Blob;
 }
 
 /** A finished voice note, from the app's recorder (`expo-audio`). */
@@ -28,6 +36,8 @@ export interface ChatRecordedVoice {
     durationMs: number;
     /** Loudness samples taken while recording, for the waveform. Optional: the note sends without one. */
     levels?: number[];
+    /** The recording itself, on the web build only, as for `ChatPickedFile.file`. */
+    file?: Blob;
 }
 
 export interface ChatVoiceRecording {
@@ -72,4 +82,22 @@ export const ChatNativeContext = createContext<ChatNativeContextValue>({
 
 export function useChatNative(): ChatNativeContextValue {
     return useContext(ChatNativeContext);
+}
+
+/**
+ * What to upload for a picked file or a recording. On a phone, React Native's `FormData` reads
+ * `{ uri, name, type }` from disk. In a browser it would send the text `[object Object]`, so there the file
+ * must be a `Blob`: the one the app supplied, or the one its address points at.
+ */
+export async function toUploadFile(
+    picked: { uri: string; name: string; type: string; file?: Blob },
+    platform: string,
+    fetchImpl: typeof fetch = fetch,
+): Promise<ChatUploadFile> {
+    if (platform !== 'web') return { uri: picked.uri, name: picked.name, type: picked.type };
+    if (picked.file !== undefined) return picked.file;
+
+    const blob = await (await fetchImpl(picked.uri)).blob();
+
+    return typeof File === 'function' ? new File([blob], picked.name, { type: picked.type || blob.type }) : blob;
 }

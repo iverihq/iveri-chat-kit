@@ -6,6 +6,7 @@ export * from './message-groups.js';
 export * from './message-permissions.js';
 export * from './message-window.js';
 export * from './people.js';
+export * from './pin-to-newest.js';
 export * from './product-text.js';
 export * from './reactions.js';
 export * from './read-state.js';

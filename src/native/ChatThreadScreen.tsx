@@ -7,7 +7,7 @@ import {
     ChatReportTarget,
 } from '@iveri/contracts/chat';
 import type { ChatAttachment, ChatMessage } from '@iveri/contracts/chat';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     FlatList,
@@ -39,6 +39,7 @@ import {
     formatLastActive,
     groupMessages,
     messagePermissions,
+    shouldPinToNewest,
     myReaction,
     systemNoticeText,
     threadRows,
@@ -92,6 +93,10 @@ export function ChatThreadScreen({
     const [opened, setOpened] = useState<Nullable<{ id: UUID; seq: number }>>(null);
     const data = conversation.data;
 
+    const list = useRef<FlatList<ChatThreadRow>>(null);
+    const atNewest = useRef(true);
+    const previousNewestKey = useRef<Nullable<string>>(null);
+
     if (data !== undefined && opened?.id !== conversationId) setOpened({ id: conversationId, seq: data.myLastReadSeq });
 
     const rows = useMemo(() => {
@@ -111,6 +116,30 @@ export function ChatThreadScreen({
             showsSenders: data.kind === ChatConversationKind.GROUP || others.length > 1,
         }).reverse();
     }, [data, messages.items, opened, currentUserId, timeZone]);
+
+    // The list is inverted, so offset 0 is the newest message. Kept there explicitly when the newest row
+    // changes and the reader was at the bottom or sent it: a list that only relies on the platform keeping
+    // its offset was seen in the web build to jump to the oldest message after a send.
+    useEffect(() => {
+        const newest = rows.find(
+            (row): row is Extract<ChatThreadRow, { item: unknown }> => row.type === 'message' || row.type === 'notice',
+        );
+        const newestKey = newest?.key ?? null;
+        const item = newest?.item ?? null;
+        const newestIsOwn = item !== null && (item.type === 'pending' || item.message.isOwn);
+        if (
+            shouldPinToNewest({
+                previousNewestKey: previousNewestKey.current,
+                newestKey,
+                wasAtNewest: atNewest.current,
+                newestIsOwn,
+            })
+        ) {
+            list.current?.scrollToOffset({ offset: 0, animated: previousNewestKey.current !== null });
+            atNewest.current = true;
+        }
+        previousNewestKey.current = newestKey;
+    }, [rows]);
 
     if (data === undefined) {
         return (
@@ -260,7 +289,9 @@ export function ChatThreadScreen({
                 </View>
             )}
             <FlatList
+                ref={list}
                 inverted
+                style={styles.listFrame}
                 data={rows}
                 keyExtractor={(row) => row.key}
                 renderItem={renderRow}
@@ -270,7 +301,8 @@ export function ChatThreadScreen({
                     if (messages.hasOlder && !messages.isLoadingOlder) void messages.loadOlder();
                 }}
                 onScroll={(event) => {
-                    if (event.nativeEvent.contentOffset.y < 48 && newestSeq > data.myLastReadSeq) markRead(newestSeq);
+                    atNewest.current = event.nativeEvent.contentOffset.y < 48;
+                    if (atNewest.current && newestSeq > data.myLastReadSeq) markRead(newestSeq);
                 }}
                 onContentSizeChange={() => {
                     if (newestSeq > data.myLastReadSeq) markRead(newestSeq);
@@ -425,6 +457,8 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         overflow: 'hidden',
     },
+    // Bounded, so the list scrolls inside itself rather than growing the page around it.
+    listFrame: { flex: 1, minHeight: 0 },
     list: { paddingHorizontal: 12, paddingVertical: 12 },
     messageRow: { paddingVertical: 3 },
     day: { alignItems: 'center', paddingVertical: 8 },

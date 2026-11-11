@@ -167,6 +167,7 @@ const INTERFACE_KEYS = [
     'chat.thread.request.accept',
     'chat.thread.request.block',
 
+    'chat.message.label',
     'chat.message.edited',
     'chat.message.deleted',
     'chat.message.sending',
