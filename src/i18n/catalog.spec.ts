@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 
 import { CHAT_KIT_FORBIDDEN_WORDS, findForbiddenWords } from './forbidden-words.js';
 import {
+    CHAT_ACCOUNT_MESSAGE_KEYS,
     CHAT_KIT_MESSAGE_KEYS,
     CHAT_PRODUCT_TEXT_MESSAGE_KEYS,
     CHAT_REFUSAL_MESSAGE_KEYS,
@@ -44,6 +45,7 @@ const SERVER_KEYS = new Set<string>([
     ...CHAT_REFUSAL_MESSAGE_KEYS,
     ...CHAT_REPORT_REASON_MESSAGE_KEYS,
     ...CHAT_PRODUCT_TEXT_MESSAGE_KEYS,
+    ...CHAT_ACCOUNT_MESSAGE_KEYS,
 ]);
 
 describe('CHAT_KIT_MESSAGE_KEYS', () => {
