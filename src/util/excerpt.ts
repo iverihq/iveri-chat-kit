@@ -37,7 +37,9 @@ export function lastMessageExcerpt(
     { isGroup }: { isGroup: boolean },
 ): string {
     if (preview === null) return t('chat.preview.empty');
-    if (preview.systemKey !== null) return systemNoticeText(preview.systemKey, null, t);
+    // `systemVariables` arrived with contracts 0.76; a chat-api from before it sends none, and the notice then
+    // reads as the neutral sentence rather than a pattern with holes.
+    if (preview.systemKey !== null) return systemNoticeText(preview.systemKey, preview.systemVariables ?? null, t);
     if (preview.isDeleted) return t('chat.preview.deleted');
 
     const text =

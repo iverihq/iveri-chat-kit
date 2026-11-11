@@ -147,7 +147,14 @@ describe('day and time labels', () => {
 
 describe('excerpts and notices', () => {
     it('words the last message by what it is and who sent it', () => {
-        const base = { seq: 3, systemKey: null, senderName: 'Nino', isDeleted: false, sentAt: NOW.toISOString() };
+        const base = {
+            seq: 3,
+            systemKey: null,
+            systemVariables: null,
+            senderName: 'Nino',
+            isDeleted: false,
+            sentAt: NOW.toISOString(),
+        };
         expect(
             lastMessageExcerpt({ ...base, kind: ChatMessageKind.PHOTO, excerpt: null, isOwn: false }, keyTranslate, {
                 isGroup: false,
@@ -180,6 +187,26 @@ describe('excerpts and notices', () => {
         expect(systemNoticeText('chat.system.taxi-from-the-future', null, known)).toBe('A change');
     });
 
+    it('says the whole sentence on an inbox row when the preview carries the notice’s variables', () => {
+        const filled = (key: string, values?: Record<string, unknown>): string =>
+            key === 'chat.system.group-created' && typeof values?.actor === 'string'
+                ? `${values.actor} created the group`
+                : key;
+        const preview = {
+            seq: 1,
+            kind: ChatMessageKind.SYSTEM,
+            excerpt: null,
+            systemKey: 'chat.system.group-created',
+            systemVariables: { actor: 'Nino' },
+            senderName: null,
+            isOwn: false,
+            isDeleted: false,
+            sentAt: NOW.toISOString(),
+        };
+
+        expect(lastMessageExcerpt(preview, filled, { isGroup: true })).toBe('Nino created the group');
+    });
+
     it('never shows a notice’s pattern with holes in it when its variables were not sent', () => {
         // What an app's translate returns for a pattern it could not fill: the pattern itself.
         const pattern = (key: string): string =>
@@ -193,6 +220,7 @@ describe('excerpts and notices', () => {
             kind: ChatMessageKind.SYSTEM,
             excerpt: null,
             systemKey: 'chat.system.group-created',
+            systemVariables: null,
             senderName: null,
             isOwn: false,
             isDeleted: false,
