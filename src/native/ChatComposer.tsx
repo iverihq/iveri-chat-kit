@@ -8,7 +8,7 @@ import {
 } from '@iveri/contracts/chat';
 import type { ChatConversation, ChatMessage } from '@iveri/contracts/chat';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { useChatContext, useChatText } from '../provider/index.js';
 import {
@@ -30,7 +30,7 @@ import {
 } from '../util/index.js';
 
 import { ChatText } from './ChatText.js';
-import { useChatNative, type ChatPickedFile, type ChatVoiceRecording } from './native-context.js';
+import { toUploadFile, useChatNative, type ChatPickedFile, type ChatVoiceRecording } from './native-context.js';
 
 export type NativeComposerMode = { type: 'reply'; message: ChatMessage } | { type: 'edit'; message: ChatMessage };
 
@@ -117,11 +117,18 @@ export function ChatComposer({ conversation, mode, onModeChange }: Readonly<Chat
     const canSubmit = !isTooLong && !drafts.isUploading && (isEditing ? trimmed.length > 0 : hasContent);
     const canRecord = capabilities.recordVoice !== undefined && !isEditing && !hasContent && drafts.drafts.length === 0;
 
-    const addPicked = (files: ChatPickedFile[] | null, kind: ChatAttachmentKind): void => {
+    const addPicked = async (files: ChatPickedFile[] | null, kind: ChatAttachmentKind): Promise<void> => {
         setNotice(null);
         for (const file of files ?? []) {
+            let upload;
+            try {
+                upload = await toUploadFile(file, Platform.OS);
+            } catch (error: unknown) {
+                setNotice(describeError(error, translate));
+                break;
+            }
             const refusal = drafts.add({
-                file: { uri: file.uri, name: file.name, type: file.type },
+                file: upload,
                 name: file.name,
                 sizeBytes: file.size,
                 kind: kind === ChatAttachmentKind.PHOTO ? kind : attachmentKindFor(file.type),
@@ -187,14 +194,11 @@ export function ChatComposer({ conversation, mode, onModeChange }: Readonly<Chat
         try {
             const voice = await current.handle.stop();
             if (voice === null) return;
-            const attachment = await client.uploadAttachment(
-                { uri: voice.uri, name: voice.name, type: voice.type },
-                {
-                    kind: ChatAttachmentKind.VOICE,
-                    durationMs: Math.round(voice.durationMs),
-                    ...(voice.levels === undefined ? {} : { waveform: encodeWaveformField(voice.levels) }),
-                },
-            );
+            const attachment = await client.uploadAttachment(await toUploadFile(voice, Platform.OS), {
+                kind: ChatAttachmentKind.VOICE,
+                durationMs: Math.round(voice.durationMs),
+                ...(voice.levels === undefined ? {} : { waveform: encodeWaveformField(voice.levels) }),
+            });
             const replyTo = mode?.type === 'reply' ? toReplyPreview(mode.message) : null;
             onModeChange(null);
             await sender.send({ attachments: [attachment], replyTo });
@@ -308,7 +312,7 @@ export function ChatComposer({ conversation, mode, onModeChange }: Readonly<Chat
                         accessibilityLabel={t('chat.composer.attach-photo')}
                         onPress={() => {
                             void capabilities.pickImage?.().then((files) => {
-                                addPicked(files, ChatAttachmentKind.PHOTO);
+                                void addPicked(files, ChatAttachmentKind.PHOTO);
                             });
                         }}
                         style={styles.iconButton}
@@ -322,7 +326,7 @@ export function ChatComposer({ conversation, mode, onModeChange }: Readonly<Chat
                         accessibilityLabel={t('chat.composer.attach-file')}
                         onPress={() => {
                             void capabilities.pickFile?.().then((files) => {
-                                addPicked(files, ChatAttachmentKind.FILE);
+                                void addPicked(files, ChatAttachmentKind.FILE);
                             });
                         }}
                         style={styles.iconButton}

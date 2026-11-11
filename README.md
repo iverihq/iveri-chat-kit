@@ -96,7 +96,10 @@ every 15 s without a socket, every 30 s with one.
 
 The native components take device capabilities from the app through `ChatNativeProvider`: `pickImage`, `pickFile`,
 `recordVoice`, `playAudio`, `openUrl`, `copyText`. The kit depends on no Expo module; a capability left out removes its
-control. `resolveFontFamily` carries the app's `AppText` rule, because React Native has no per-glyph fallback and
+control. On the **web build** of the native components a browser cannot upload React Native's `{ uri, name, type }`, so
+`pickImage`, `pickFile` and `recordVoice` should also return the `File` as `file` (Expo's pickers give it as
+`asset.file`); without it the kit reads the `blob:` or `data:` address itself. There a tap on a message opens its actions,
+where a phone uses a long press. `resolveFontFamily` carries the app's `AppText` rule, because React Native has no per-glyph fallback and
 Georgian needs Noto.
 
 ## Developing

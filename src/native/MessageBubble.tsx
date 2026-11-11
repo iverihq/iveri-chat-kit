@@ -1,8 +1,8 @@
 import type { Nullable, UUID } from '@iveri/contracts';
-import { ChatAttachmentKind } from '@iveri/contracts/chat';
+import { ChatAttachmentKind, ChatMessageKind } from '@iveri/contracts/chat';
 import type { ChatAttachment, ChatConversation, ChatMessage } from '@iveri/contracts/chat';
 import { useEffect, useRef, useState } from 'react';
-import { Image, Pressable, StyleSheet, View } from 'react-native';
+import { Image, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { useChatContext, useChatText } from '../provider/index.js';
 import {
@@ -11,6 +11,7 @@ import {
     formatByteSize,
     formatDuration,
     formatMessageTime,
+    messageExcerpt,
     linkify,
     readStateOf,
     replyExcerpt,
@@ -183,6 +184,28 @@ export function MessageBubble({
     const sentAt = message?.sentAt ?? pending?.createdAt ?? '';
     const isDeleted = message?.isDeleted ?? false;
     const readState = readStateOf(item, conversation);
+    // A pending message has no kind yet; what it carries says what it is.
+    const KIND_OF_ATTACHMENT = {
+        [ChatAttachmentKind.PHOTO]: ChatMessageKind.PHOTO,
+        [ChatAttachmentKind.FILE]: ChatMessageKind.FILE,
+        [ChatAttachmentKind.VOICE]: ChatMessageKind.VOICE,
+    } as const;
+    const firstAttachment = attachments.at(0);
+    const kind =
+        message?.kind ??
+        (firstAttachment === undefined ? ChatMessageKind.TEXT : KIND_OF_ATTACHMENT[firstAttachment.kind]);
+    // Every bubble has a name a screen reader can say: who, when, and what, rather than "button".
+    const accessibleName = t('chat.message.label', {
+        name: isOwn ? t('chat.common.you') : (message?.sender?.displayName ?? ''),
+        time: sentAt.length > 0 ? formatMessageTime(sentAt, { locale, timeZone }) : '',
+        text: messageExcerpt({ body, isDeleted, kind }, translate),
+    });
+    const openActions =
+        message === null || isDeleted
+            ? undefined
+            : (): void => {
+                  onLongPress(message);
+              };
     const photos = attachments.filter((attachment) => attachment.kind === ChatAttachmentKind.PHOTO);
     const others = attachments.filter((attachment) => attachment.kind !== ChatAttachmentKind.PHOTO);
 
@@ -193,15 +216,12 @@ export function MessageBubble({
             )}
             <Pressable
                 accessibilityRole={message === null ? undefined : 'button'}
+                accessibilityLabel={accessibleName}
                 accessibilityHint={message === null ? undefined : t('chat.action.more')}
+                // A browser has no long press worth relying on, so on the web build a tap opens the actions too.
+                onPress={Platform.OS === 'web' ? openActions : undefined}
                 delayLongPress={350}
-                onLongPress={
-                    message === null || isDeleted
-                        ? undefined
-                        : (): void => {
-                              onLongPress(message);
-                          }
-                }
+                onLongPress={openActions}
                 style={[
                     styles.bubble,
                     cornerStyle(isOwn, position, theme.radius.card),

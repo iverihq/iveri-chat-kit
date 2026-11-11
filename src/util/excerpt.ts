@@ -47,6 +47,20 @@ export function lastMessageExcerpt(
     return text;
 }
 
+/** A message in one line, for a label a screen reader reads: its text, what it carries, or that it was deleted. */
+export function messageExcerpt(
+    message: { body: Nullable<string>; isDeleted: boolean; kind: ChatMessageKind },
+    t: ChatTranslate,
+    maxLength = 140,
+): string {
+    if (message.isDeleted) return t('chat.message.deleted');
+    if (message.body !== null && message.body.length > 0) {
+        return message.body.length > maxLength ? `${message.body.slice(0, maxLength - 1)}…` : message.body;
+    }
+
+    return kindLabel(message.kind, t) ?? '';
+}
+
 /** The text of a reply's quote. */
 export function replyExcerpt(reply: ChatReplyPreview, t: ChatTranslate): string {
     if (reply.isDeleted) return t('chat.message.quote-deleted');
