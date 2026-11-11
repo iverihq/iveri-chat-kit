@@ -52,7 +52,7 @@ export function ThreadHeader({
 
     const subtitle =
         heading.subtitle ??
-        (conversation.kind === ChatConversationKind.GROUP
+        (conversation.isGroup
             ? t('chat.thread.members', { count: conversation.memberCount })
             : heading.lastActiveAt !== null
               ? formatLastActive(heading.lastActiveAt, translate, { locale, timeZone, now })

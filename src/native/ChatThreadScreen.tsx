@@ -1,11 +1,5 @@
 import type { Nullable, UUID } from '@iveri/contracts';
-import {
-    CHAT_QUICK_REACTIONS,
-    ChatConversationKind,
-    ChatParticipantStatus,
-    ChatReportReason,
-    ChatReportTarget,
-} from '@iveri/contracts/chat';
+import { CHAT_QUICK_REACTIONS, ChatParticipantStatus, ChatReportReason, ChatReportTarget } from '@iveri/contracts/chat';
 import type { ChatAttachment, ChatMessage } from '@iveri/contracts/chat';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -116,7 +110,7 @@ export function ChatThreadScreen({
 
         return threadRows(sections, {
             dividerKey,
-            showsSenders: data.kind === ChatConversationKind.GROUP || others.length > 1,
+            showsSenders: data.isGroup || others.length > 1,
         }).reverse();
     }, [data, messages.items, opened, currentUserId, timeZone]);
 
@@ -160,7 +154,7 @@ export function ChatThreadScreen({
     const heading = conversationHeading(data, translate);
     const subtitle =
         heading.subtitle ??
-        (data.kind === ChatConversationKind.GROUP
+        (data.isGroup
             ? t('chat.thread.members', { count: data.memberCount })
             : heading.lastActiveAt === null
               ? null

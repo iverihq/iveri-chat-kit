@@ -1,4 +1,3 @@
-import { ChatConversationKind } from '@iveri/contracts/chat';
 import type { ChatConversationSummary } from '@iveri/contracts/chat';
 
 import { useChatContext, useChatText } from '../provider/index.js';
@@ -41,7 +40,7 @@ export function InboxRow({
     const badge = formatUnreadBadge(conversation.unreadCount, locale);
     const excerpt = lastMessageExcerpt(conversation.lastMessage, translate, {
         // A sender's name only helps where more than two people talk: in a ride's chat it is the title already.
-        isGroup: conversation.kind === ChatConversationKind.GROUP || conversation.memberCount > 2,
+        isGroup: conversation.isGroup || conversation.memberCount > 2,
     });
     const time =
         conversation.lastMessage === null

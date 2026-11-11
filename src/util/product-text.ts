@@ -46,8 +46,9 @@ type HeadingSource = ChatConversationSummary & Partial<Pick<ChatConversation, 'p
  * **A context conversation between two people is about the other person**, so it shows their name with
  * the product's label beside it ("Giorgi B. · Driver") and the product's title beneath ("Taxi ride").
  * Leading with "Taxi ride" would make every ride the passenger ever took look like the same
- * conversation. Any other context conversation leads with the product's title. A direct conversation's
- * title is already the other person's name, and a group's is its own.
+ * conversation. Any other context conversation leads with the product's title, and so does one the product
+ * opened as a group, such as a team that holds two people today. A direct conversation's title is already the
+ * other person's name, and a group's is its own.
  */
 export function conversationHeading(conversation: HeadingSource, t: ChatTranslate): ChatConversationHeading {
     const others = (conversation.participants ?? []).filter(
@@ -58,7 +59,7 @@ export function conversationHeading(conversation: HeadingSource, t: ChatTranslat
     );
 
     if (conversation.kind === ChatConversationKind.CONTEXT) {
-        const other = others.length === 1 ? others[0] : null;
+        const other = others.length === 1 && !conversation.isGroup ? others[0] : null;
         if (other !== null) {
             return {
                 title: other.displayName,

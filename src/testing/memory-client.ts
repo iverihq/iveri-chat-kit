@@ -207,6 +207,7 @@ export function createMemoryClient(copy: GalleryCopy, now: Date): ChatClient {
         conversation({
             id: GROUP,
             kind: ChatConversationKind.GROUP,
+            isGroup: true,
             title: copy.group,
             other: null,
             memberCount: 3,
