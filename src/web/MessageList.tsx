@@ -1,5 +1,5 @@
 import type { Nullable, UUID } from '@iveri/contracts';
-import { ChatConversationKind, ChatParticipantStatus } from '@iveri/contracts/chat';
+import { ChatParticipantStatus } from '@iveri/contracts/chat';
 import type { ChatAttachment, ChatConversation, ChatMessage } from '@iveri/contracts/chat';
 import type { RefObject } from 'react';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -98,7 +98,7 @@ export function MessageList({
     const activeOthers = conversation.participants.filter(
         (participant) => !participant.isMe && participant.status === ChatParticipantStatus.ACTIVE,
     ).length;
-    const showsSenders = conversation.kind === ChatConversationKind.GROUP || activeOthers > 1;
+    const showsSenders = conversation.isGroup || activeOthers > 1;
     const newestSeq = messages.window.messages.at(-1)?.seq ?? 0;
 
     const reportReadIfAtEnd = (): void => {

@@ -1,5 +1,4 @@
 import type { Maybe, UUID } from '@iveri/contracts';
-import { ChatConversationKind } from '@iveri/contracts/chat';
 import type { ChatConversationSummary, ChatInboxFolder } from '@iveri/contracts/chat';
 import { useState } from 'react';
 import { ActivityIndicator, FlatList, Image, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
@@ -40,7 +39,7 @@ function Row({
     const badge = formatUnreadBadge(conversation.unreadCount, locale);
     const excerpt = lastMessageExcerpt(conversation.lastMessage, translate, {
         // A sender's name only helps where more than two people talk: in a ride's chat it is the title already.
-        isGroup: conversation.kind === ChatConversationKind.GROUP || conversation.memberCount > 2,
+        isGroup: conversation.isGroup || conversation.memberCount > 2,
     });
 
     return (

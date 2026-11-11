@@ -46,6 +46,7 @@ export function conversation(overrides: Partial<ChatConversation> = {}): ChatCon
         avatar: null,
         other: { userId: NINO, displayName: 'Nino Beridze', handle: 'nino', avatar: null, lastActiveAt: null },
         context: null,
+        isGroup: false,
         memberCount: 2,
         lastMessage: null,
         lastSeq: 0,

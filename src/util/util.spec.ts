@@ -263,6 +263,7 @@ describe('read state', () => {
     it('counts readers in a group, and treats hidden read state as unread', () => {
         const group = conversation({
             kind: ChatConversationKind.GROUP,
+            isGroup: true,
             participants: [
                 participant({ userId: ME, isMe: true }),
                 participant({ userId: NINO, lastReadSeq: 9 }),
@@ -413,6 +414,27 @@ describe('productText and the heading rule', () => {
             subtitle: 'chat.title.order',
         });
     });
+
+    it('leads a product conversation opened as a group with its title, even while it holds two people', () => {
+        const team = conversation({
+            kind: ChatConversationKind.CONTEXT,
+            isGroup: true,
+            title: 'Platform',
+            subtitle: null,
+            other: null,
+            participants: [participant({ userId: ME, isMe: true }), participant({ displayName: 'Ana Gelashvili' })],
+        });
+
+        expect(conversationHeading(team, (key) => key)).toMatchObject({
+            title: 'Platform',
+            label: null,
+            subtitle: null,
+            lastActiveAt: null,
+        });
+
+        const { participants: _participants, ...summary } = team;
+        expect(conversationHeading(summary, (key) => key)).toMatchObject({ title: 'Platform' });
+    });
 });
 
 describe('message permissions', () => {
@@ -420,7 +442,11 @@ describe('message permissions', () => {
         const fresh = ownMessage({ sentAt: '2026-11-11T11:00:00.000Z' });
         const old = ownMessage({ sentAt: '2026-11-01T11:00:00.000Z' });
         const direct = conversation();
-        const group = conversation({ kind: ChatConversationKind.GROUP, myRole: ChatParticipantRole.ADMIN });
+        const group = conversation({
+            kind: ChatConversationKind.GROUP,
+            isGroup: true,
+            myRole: ChatParticipantRole.ADMIN,
+        });
 
         expect(messagePermissions(fresh, direct, NOW)).toMatchObject({
             canEdit: true,
