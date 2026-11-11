@@ -73,6 +73,20 @@ return conversation ? <ChatThread conversationId={conversation.id} showHeader />
 
 A 404 means "not a participant, or not open yet", which a page shows as no chat.
 
+An embedding can narrow the thread to what its product allows and name its back control for where it leads:
+
+```tsx
+<ChatThread
+    conversationId={conversation.id}
+    onBack={() => navigate(`/rides/${rideId}`)}
+    backLabel={t('ride.chat.back')}
+    attachmentKinds={[ChatAttachmentKind.PHOTO]}
+    allowVoice={false}
+/>
+```
+
+On a phone the same limits come from the capabilities the app passes to `ChatNativeProvider`.
+
 **Labels and titles a product sends:** a participant's `label` and a context conversation's `title`/`subtitle` that
 start with `chat.` are keys in the `chat-kit` namespace and are translated for the reader (`chat.label.driver`,
 `chat.title.taxi-ride`, `chat.title.social-direct`); anything else is the product's own text and is shown exactly as

@@ -1,4 +1,4 @@
-import { ChatConversationKind, ChatMessageKind, ChatRefusal } from '@iveri/contracts/chat';
+import { ChatAttachmentKind, ChatConversationKind, ChatMessageKind, ChatRefusal } from '@iveri/contracts/chat';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -186,6 +186,50 @@ describe('ChatThread after a request is accepted', () => {
             },
             { timeout: 3000 },
         );
+    });
+});
+
+describe('ChatThread in an embedding', () => {
+    it('offers only the attachments and controls the embedding allows, and names its back control', async () => {
+        const harness = threadHarness();
+        harness.stub.on('GET', `/conversations/${CONVERSATION}/messages`, () => ({
+            body: { hasOlder: false, lastSeq: 0, messages: [] },
+        }));
+
+        render(
+            <ChatThread
+                conversationId={CONVERSATION}
+                onBack={() => undefined}
+                backLabel="Back to the ride"
+                attachmentKinds={[ChatAttachmentKind.PHOTO]}
+                allowVoice={false}
+            />,
+            { wrapper: harness.wrapper },
+        );
+
+        expect(await screen.findByRole('button', { name: 'Back to the ride' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'chat.composer.record' })).toBeNull();
+        expect(screen.getByRole('button', { name: 'chat.composer.send' })).toBeDisabled();
+        await userEvent.click(screen.getByRole('button', { name: 'chat.composer.attach' }));
+        expect(screen.getByRole('menuitem', { name: 'chat.composer.attach-photo' })).toBeInTheDocument();
+        expect(screen.queryByRole('menuitem', { name: 'chat.composer.attach-file' })).toBeNull();
+    });
+
+    it('offers no Accept on a request that has closed', async () => {
+        const harness = threadHarness({
+            isRequest: true,
+            canSend: false,
+            refusal: ChatRefusal.CLOSED,
+            closedAt: '2026-11-11T10:00:00.000Z',
+        });
+        harness.stub.on('GET', `/conversations/${CONVERSATION}/messages`, () => ({
+            body: { hasOlder: false, lastSeq: 0, messages: [] },
+        }));
+
+        render(<ChatThread conversationId={CONVERSATION} />, { wrapper: harness.wrapper });
+
+        expect(await screen.findByText('chat.refusal.closed')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'chat.thread.request.accept' })).toBeNull();
     });
 });
 

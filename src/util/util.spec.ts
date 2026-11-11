@@ -15,7 +15,7 @@ import { firstUnreadKey, initialsOf, typingText } from './people.js';
 import { conversationHeading, productText } from './product-text.js';
 import { applyMyReaction } from './reactions.js';
 import { readStateOf } from './read-state.js';
-import { errorText } from './refusal.js';
+import { canAcceptRequest, errorText } from './refusal.js';
 import { messageItem, pendingItem, type ChatPendingMessage } from './thread-item.js';
 import { threadRows } from './thread-rows.js';
 import { formatDayLabel, formatDuration, formatInboxTime, formatLastActive } from './time-label.js';
@@ -281,6 +281,16 @@ describe('errorText', () => {
         expect(errorText(ChatApiError.network(new Error('offline')))).toEqual({ key: 'chat.error.network' });
         expect(errorText(new ChatApiError({ status: 429, message: 'x' }))).toEqual({ key: 'chat.error.rate-limited' });
         expect(errorText(new Error('boom'))).toEqual({ key: 'chat.error.generic' });
+    });
+});
+
+describe('canAcceptRequest', () => {
+    it('offers Accept only on a request accepting would open', () => {
+        expect(canAcceptRequest({ isRequest: true, refusal: ChatRefusal.REQUEST_PENDING, closedAt: null })).toBe(true);
+        expect(canAcceptRequest({ isRequest: true, refusal: ChatRefusal.CLOSED, closedAt: null })).toBe(false);
+        expect(canAcceptRequest({ isRequest: true, refusal: ChatRefusal.NOT_WRITABLE, closedAt: null })).toBe(false);
+        expect(canAcceptRequest({ isRequest: true, refusal: null, closedAt: NOW.toISOString() })).toBe(false);
+        expect(canAcceptRequest({ isRequest: false, refusal: ChatRefusal.BLOCKED, closedAt: null })).toBe(false);
     });
 });
 

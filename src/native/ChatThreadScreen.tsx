@@ -56,6 +56,8 @@ export interface ChatThreadScreenProps {
     conversationId: UUID;
     /** Draws a back control in the header. Off when the app's own navigator draws one. */
     onBack?: () => void;
+    /** The back control's name, already translated: "Back to the ride" in an embedding. */
+    backLabel?: string;
     showHeader?: boolean;
 }
 
@@ -72,6 +74,7 @@ type Sheet =
 export function ChatThreadScreen({
     conversationId,
     onBack,
+    backLabel,
     showHeader = true,
 }: Readonly<ChatThreadScreenProps>): React.JSX.Element {
     const t = useChatText();
@@ -135,7 +138,8 @@ export function ChatThreadScreen({
                 newestIsOwn,
             })
         ) {
-            list.current?.scrollToOffset({ offset: 0, animated: previousNewestKey.current !== null });
+            // Not animated: the new message has to be on screen in the very next paint, not after a glide.
+            list.current?.scrollToOffset({ offset: 0, animated: false });
             atNewest.current = true;
         }
         previousNewestKey.current = newestKey;
@@ -193,12 +197,15 @@ export function ChatThreadScreen({
         if (row.type === 'notice') {
             const message = row.item.type === 'message' ? row.item.message : null;
 
+            const notice =
+                message === null ? '' : systemNoticeText(message.systemKey ?? '', message.systemVariables, translate);
+
+            // One element with a role and the sentence as its name, so a screen reader reaches a notice the way
+            // it reaches a message; inside an inverted list on the web the bare text was missing from the tree.
             return (
-                <View style={styles.notice}>
+                <View style={styles.notice} accessible accessibilityRole="text" accessibilityLabel={notice}>
                     <ChatText style={[styles.noticeText, { color: c.inkSoft, backgroundColor: c.sunken }]}>
-                        {message === null
-                            ? ''
-                            : systemNoticeText(message.systemKey ?? '', message.systemVariables, translate)}
+                        {notice}
                     </ChatText>
                 </View>
             );
@@ -261,7 +268,7 @@ export function ChatThreadScreen({
                     {onBack !== undefined && (
                         <Pressable
                             accessibilityRole="button"
-                            accessibilityLabel={t('chat.thread.back')}
+                            accessibilityLabel={backLabel ?? t('chat.thread.back')}
                             onPress={onBack}
                             hitSlop={10}
                             style={styles.back}

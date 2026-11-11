@@ -17,6 +17,8 @@ import { cn, FOCUS_RING, ICON_BUTTON } from './style.js';
 export interface ThreadHeaderProps {
     conversation: ChatConversation;
     onBack?: () => void;
+    /** The back control's name, already translated: "Back to the ride" in an embedding. "Back to conversations" otherwise. */
+    backLabel?: string;
     onOpenDetails?: () => void;
     onGone?: () => void;
 }
@@ -32,6 +34,7 @@ export interface ThreadHeaderProps {
 export function ThreadHeader({
     conversation,
     onBack,
+    backLabel,
     onOpenDetails,
     onGone,
 }: Readonly<ThreadHeaderProps>): React.JSX.Element {
@@ -99,7 +102,12 @@ export function ThreadHeader({
     return (
         <header className="flex min-h-16 items-center gap-1 border-b border-line bg-surface px-2 py-2 sm:gap-2 sm:px-4">
             {onBack !== undefined && (
-                <button type="button" aria-label={t('chat.thread.back')} onClick={onBack} className={ICON_BUTTON}>
+                <button
+                    type="button"
+                    aria-label={backLabel ?? t('chat.thread.back')}
+                    onClick={onBack}
+                    className={ICON_BUTTON}
+                >
                     <BackIcon />
                 </button>
             )}

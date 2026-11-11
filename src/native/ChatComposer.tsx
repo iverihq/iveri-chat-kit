@@ -4,7 +4,6 @@ import {
     CHAT_ATTACHMENTS_PER_MESSAGE,
     CHAT_MESSAGE_MAX_LENGTH,
     ChatAttachmentKind,
-    ChatRefusal,
 } from '@iveri/contracts/chat';
 import type { ChatConversation, ChatMessage } from '@iveri/contracts/chat';
 import { useEffect, useRef, useState } from 'react';
@@ -20,6 +19,7 @@ import {
     useTyping,
 } from '../query/index.js';
 import {
+    canAcceptRequest,
     cannotSendText,
     describeError,
     encodeWaveformField,
@@ -86,7 +86,7 @@ export function ChatComposer({ conversation, mode, onModeChange }: Readonly<Chat
 
     if (!conversation.canSend) {
         const reason = cannotSendText(conversation.refusal);
-        const canAccept = conversation.isRequest || conversation.refusal === ChatRefusal.REQUEST_PENDING;
+        const canAccept = canAcceptRequest(conversation);
 
         return (
             <View style={[styles.closed, { backgroundColor: c.sunken, borderTopColor: c.line }]}>

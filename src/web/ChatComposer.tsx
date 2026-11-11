@@ -4,7 +4,6 @@ import {
     CHAT_ATTACHMENTS_PER_MESSAGE,
     CHAT_MESSAGE_MAX_LENGTH,
     ChatAttachmentKind,
-    ChatRefusal,
 } from '@iveri/contracts/chat';
 import type { ChatConversation, ChatMessage } from '@iveri/contracts/chat';
 import type { ClipboardEvent, DragEvent, KeyboardEvent } from 'react';
@@ -21,6 +20,7 @@ import {
     type ChatDraftRefusal,
 } from '../query/index.js';
 import {
+    canAcceptRequest,
     cannotSendText,
     describeError,
     encodeWaveformField,
@@ -54,7 +54,16 @@ export interface ChatComposerProps {
     mode: Nullable<ComposerMode>;
     onModeChange: (mode: Nullable<ComposerMode>) => void;
     autoFocus?: boolean;
+    /**
+     * What a person may attach here: photos, files, both (the default) or neither. An embedding limits it to
+     * what its product allows, Taxi's ride chat to photos. Pasting and dropping follow the same rule.
+     */
+    attachmentKinds?: readonly (ChatAttachmentKind.PHOTO | ChatAttachmentKind.FILE)[];
+    /** Whether a voice note can be recorded here. On by default. */
+    allowVoice?: boolean;
 }
+
+const ALL_KINDS = [ChatAttachmentKind.PHOTO, ChatAttachmentKind.FILE] as const;
 
 const MAX_HEIGHT_PX = 200;
 
@@ -73,6 +82,8 @@ export function ChatComposer({
     mode,
     onModeChange,
     autoFocus = false,
+    attachmentKinds = ALL_KINDS,
+    allowVoice = true,
 }: Readonly<ChatComposerProps>): React.JSX.Element {
     const t = useChatText();
     const { client, translate, locale } = useChatContext();
@@ -137,7 +148,7 @@ export function ChatComposer({
 
     if (!conversation.canSend) {
         const reason = cannotSendText(conversation.refusal);
-        const canAccept = conversation.isRequest || conversation.refusal === ChatRefusal.REQUEST_PENDING;
+        const canAccept = canAcceptRequest(conversation);
 
         return (
             <div className="flex flex-wrap items-center justify-center gap-3 border-t border-line bg-sunken px-4 py-4 text-center">
@@ -176,6 +187,8 @@ export function ChatComposer({
         setNotice(null);
         for (const file of files ?? []) {
             const resolvedKind = kind ?? attachmentKindFor(file.type);
+            // Only what this conversation allows; a pasted PDF in a photos-only chat is left out.
+            if (!(attachmentKinds as readonly ChatAttachmentKind[]).includes(resolvedKind)) continue;
             let previewUrl: Nullable<string> = null;
             if (resolvedKind === ChatAttachmentKind.PHOTO && typeof URL.createObjectURL === 'function') {
                 previewUrl = URL.createObjectURL(file);
@@ -412,7 +425,7 @@ export function ChatComposer({
             )}
 
             <div className="flex items-end gap-1.5">
-                {!isEditing && (
+                {!isEditing && attachmentKinds.length > 0 && (
                     <ChatMenu
                         label={t('chat.composer.attach')}
                         icon={<AttachIcon />}
@@ -420,18 +433,26 @@ export function ChatComposer({
                         placement="above"
                         triggerClassName="h-11 w-11"
                         items={[
-                            {
-                                key: 'photo',
-                                label: t('chat.composer.attach-photo'),
-                                icon: <PhotoIcon />,
-                                onSelect: () => photoInput.current?.click(),
-                            },
-                            {
-                                key: 'file',
-                                label: t('chat.composer.attach-file'),
-                                icon: <FileIcon />,
-                                onSelect: () => fileInput.current?.click(),
-                            },
+                            ...(attachmentKinds.includes(ChatAttachmentKind.PHOTO)
+                                ? [
+                                      {
+                                          key: 'photo',
+                                          label: t('chat.composer.attach-photo'),
+                                          icon: <PhotoIcon />,
+                                          onSelect: (): void => photoInput.current?.click(),
+                                      },
+                                  ]
+                                : []),
+                            ...(attachmentKinds.includes(ChatAttachmentKind.FILE)
+                                ? [
+                                      {
+                                          key: 'file',
+                                          label: t('chat.composer.attach-file'),
+                                          icon: <FileIcon />,
+                                          onSelect: (): void => fileInput.current?.click(),
+                                      },
+                                  ]
+                                : []),
                         ]}
                     />
                 )}
@@ -454,7 +475,7 @@ export function ChatComposer({
                         className="block max-h-[200px] min-h-11 w-full resize-none bg-transparent [field-sizing:content] px-4 py-2.5 text-body text-ink outline-hidden placeholder:text-faint"
                     />
                 </div>
-                {canSubmit || isEditing || hasContent ? (
+                {canSubmit || isEditing || hasContent || !allowVoice ? (
                     <button
                         type="button"
                         aria-label={t(isEditing ? 'chat.common.save' : 'chat.composer.send')}

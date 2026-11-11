@@ -49,6 +49,8 @@ describe('ChatThreadScreen', () => {
 
         expect(await screen.findByText('Hello from Nino')).toBeInTheDocument();
         expect(screen.getByText('This conversation has closed')).toBeInTheDocument();
+        // A notice is reachable by a screen reader as one element, by its sentence.
+        expect(screen.getByLabelText('This conversation has closed')).toBeInTheDocument();
         expect(screen.getByLabelText('chat.message.sent')).toBeInTheDocument();
         expect(screen.getByLabelText('chat.composer.attach-photo')).toBeInTheDocument();
         // No `pickFile` and no `recordVoice` were supplied, so neither control exists.

@@ -15,7 +15,7 @@ import {
 } from '../query/index.js';
 import { conversationHeading, describeError, type ChatMessageWindow } from '../util/index.js';
 
-import { ChatComposer, type ComposerMode } from './ChatComposer.js';
+import { ChatComposer, type ChatComposerProps, type ComposerMode } from './ChatComposer.js';
 import { Lightbox } from './Lightbox.js';
 import { MessageList } from './MessageList.js';
 import { ReportDialog, type ReportTarget } from './ReportDialog.js';
@@ -27,6 +27,12 @@ export interface ChatThreadProps {
     conversationId: UUID;
     /** Shows a back button: a phone showing the inbox and the thread one at a time. */
     onBack?: () => void;
+    /** The back button's name, already translated, for an embedding where it leads somewhere else: the ride. */
+    backLabel?: string;
+    /** What may be attached here; both photos and files by default. See `ChatComposer`. */
+    attachmentKinds?: ChatComposerProps['attachmentKinds'];
+    /** Whether voice notes can be recorded here. On by default. */
+    allowVoice?: boolean;
     /** Makes the header open the conversation's details, which the app places (a side panel, a route). */
     onOpenDetails?: () => void;
     /** After leaving or deleting for me, so the app moves away from a conversation that is gone. */
@@ -58,6 +64,9 @@ function nextFrame(): Promise<void> {
 export function ChatThread({
     conversationId,
     onBack,
+    backLabel,
+    attachmentKinds,
+    allowVoice,
     onOpenDetails,
     onGone,
     focusSeq,
@@ -187,7 +196,13 @@ export function ChatThread({
     return (
         <section className={cn('flex h-full min-h-0 flex-col bg-canvas', className)}>
             {showHeader && (
-                <ThreadHeader conversation={data} onBack={onBack} onOpenDetails={onOpenDetails} onGone={onGone} />
+                <ThreadHeader
+                    conversation={data}
+                    onBack={onBack}
+                    backLabel={backLabel}
+                    onOpenDetails={onOpenDetails}
+                    onGone={onGone}
+                />
             )}
 
             {data.isRequest && (
@@ -253,6 +268,8 @@ export function ChatThread({
                 mode={mode}
                 onModeChange={setMode}
                 autoFocus={autoFocusComposer}
+                attachmentKinds={attachmentKinds}
+                allowVoice={allowVoice}
             />
 
             {reporting !== null && (

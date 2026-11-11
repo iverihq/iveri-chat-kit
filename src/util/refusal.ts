@@ -47,3 +47,19 @@ export function describeError(error: unknown, t: ChatTranslate): string {
 export function cannotSendText(refusal: Nullable<ChatRefusal>): ChatMessageText {
     return refusal === null ? { key: 'chat.thread.read-only' } : refusalText(refusal);
 }
+
+/**
+ * Whether the closed composer offers Accept. Only for a request that accepting would open: a conversation a
+ * product has closed, or made read-only, stays shut whatever is accepted, so offering the button beside
+ * "This conversation has closed" promises something it cannot do.
+ */
+export function canAcceptRequest(conversation: {
+    isRequest: boolean;
+    refusal: Nullable<ChatRefusal>;
+    closedAt?: Nullable<string>;
+}): boolean {
+    if (conversation.closedAt !== null && conversation.closedAt !== undefined) return false;
+    if (conversation.refusal === ChatRefusal.CLOSED || conversation.refusal === ChatRefusal.NOT_WRITABLE) return false;
+
+    return conversation.isRequest || conversation.refusal === ChatRefusal.REQUEST_PENDING;
+}
