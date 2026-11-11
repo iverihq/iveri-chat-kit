@@ -14,7 +14,7 @@ export interface ChatContextValue {
     /** The reader's time zone; the device's when absent. */
     timeZone?: string;
     translate: ChatTranslate;
-    /** The signed-in person's identity user id, which typing frames are compared against. */
+    /** The signed-in person's id in `chat-api`, which own messages and typing frames are compared against. */
     currentUserId: Maybe<UUID>;
     /** Null when no gateway is configured: the kit runs on its poll alone. */
     realtime: Maybe<ChatRealtimeConnection>;

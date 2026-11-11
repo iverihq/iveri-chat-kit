@@ -1,4 +1,4 @@
-import type { Maybe, UUID } from '@iveri/contracts';
+import type { IsoDateTime, Maybe, UUID } from '@iveri/contracts';
 import type {
     AcceptChatInvitationResponse,
     AddChatContactRequest,
@@ -41,14 +41,20 @@ export interface ChatClientOptions {
      */
     baseUrl: string;
 
-    /** The current identity access token. Read on every request, never captured, so a refresh is seen. */
+    /**
+     * The person's current token, whoever issued it: an Iveri identity access token in Iveri's own
+     * products, or the token a customer's server signed with its app secret (or minted at
+     * `POST /server/tokens`). The kit never looks inside it. Read on every request, never captured, so a
+     * refresh is seen.
+     */
     getAccessToken: () => Maybe<string> | Promise<Maybe<string>>;
 
     /**
-     * Called once when `chat-api` answers 401, before the request is retried a single time. Wire it to
-     * the app's own **single-flight** session refresh (`createSessionRefresh` in `@iveri/react-kit`):
-     * identity treats a refresh token presented twice as stolen, so two parallel refreshes from one tab
-     * would sign the person out everywhere. Return `false` to say the session is gone and skip the retry.
+     * Called once when `chat-api` answers 401, before the request is retried a single time: the app gets a
+     * fresh token however it gets them — Iveri's products from identity, a customer's app from its own
+     * server. Make it **single-flight**: identity treats a refresh token presented twice as stolen, so two
+     * parallel refreshes from one tab would sign the person out everywhere (`createSessionRefresh` in
+     * `@iveri/react-kit` does this). Return `false` to say the session is gone and skip the retry.
      */
     onUnauthorized?: () => unknown;
 
@@ -57,6 +63,16 @@ export interface ChatClientOptions {
 
     /** Defaults to `new XMLHttpRequest()`. Uploads use XHR because `fetch` reports no upload progress. */
     createXhr?: () => XMLHttpRequest;
+}
+
+/**
+ * What `chat-api` answers at `POST /realtime/ticket`: a short credential `chat-realtime` can verify without
+ * holding any app's secret, valid until the token it was exchanged for expires. Declared here rather than
+ * taken from `@iveri/contracts` so the kit keeps working with every contracts version it already peers on.
+ */
+export interface ChatRealtimeTicket {
+    ticket: string;
+    expiresAt: IsoDateTime;
 }
 
 /** A file to upload: a browser `Blob`/`File`, or React Native's `{ uri, name, type }`, which its `FormData` reads from disk. */
@@ -105,6 +121,8 @@ export interface ChatClient {
     getAccessToken(): Promise<Maybe<string>>;
     /** Runs the app's `onUnauthorized` and reports whether the session survived it. */
     refreshAccessToken(): Promise<boolean>;
+    /** Exchanges the current token for a socket ticket. Used by the realtime connection when told to. */
+    createRealtimeTicket(): Promise<ChatRealtimeTicket>;
 
     getProfile(options?: ChatRequestOptions): Promise<ChatProfile>;
     createProfile(body: CreateChatProfileRequest): Promise<ChatProfile>;

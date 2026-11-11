@@ -37,6 +37,11 @@ export class FakeSocket implements ChatSocket {
         for (const listener of this.listeners.get(event) ?? []) (listener as (...values: unknown[]) => void)(...args);
     }
 
+    /** Starts an attempt, as Socket.IO does on every connection, without waiting for its credential. */
+    attempt(): void {
+        this.options.auth(() => undefined);
+    }
+
     /** The token the socket would present, read through its `auth` callback as Socket.IO does. */
     async presentedToken(): Promise<unknown> {
         return new Promise((resolve) => {

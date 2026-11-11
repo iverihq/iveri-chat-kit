@@ -1,4 +1,4 @@
-import { ErrorCode } from '@iveri/contracts';
+import { ErrorCode, type Maybe } from '@iveri/contracts';
 import { CHAT_REALTIME_NAMESPACE, CHAT_SOCKET_EVENT } from '@iveri/contracts/chat';
 import type { ChatRealtimeFrame } from '@iveri/contracts/chat';
 import { io } from 'socket.io-client';
@@ -32,6 +32,12 @@ interface ConnectionOptions {
     onFrame: (frame: ChatRealtimeFrame) => void;
     /** After every admission: what a reconnect missed is fetched again. */
     onReady: () => void;
+    /**
+     * Present a socket ticket from `chat-api` (`POST /realtime/ticket`) instead of the token itself. A
+     * customer's app turns this on: its users' tokens are signed with an app secret only `chat-api` holds,
+     * so `chat-realtime` cannot verify them. Off by default; Iveri's products present identity tokens.
+     */
+    useTicket?: boolean;
     socketFactory?: ChatSocketFactory;
 }
 
@@ -58,6 +64,11 @@ interface GatewayError {
  * - **Any other refusal is final.** `UNAUTHENTICATED` (a token the gateway cannot verify) and `FORBIDDEN`
  *   (a service credential) would be refused again, so the connection stops and the poll carries on.
  *   A gateway restart closes at the transport instead, and Socket.IO's own reconnection handles that.
+ * - **With `useTicket`, a ticket is fetched for every attempt**, the first and each reconnect, Socket.IO's own
+ *   included, because Socket.IO calls `auth` each time. A ticket expires with the token it was exchanged
+ *   for, so one kept from an earlier attempt could be stale. **A ticket that does not arrive is the socket
+ *   being down**: the attempt is abandoned, the poll carries on, and the connection tries again on the
+ *   same capped delays, for as long as a screen holds it, as Socket.IO does after losing its transport.
  * - **Nothing here throws.** A socket that never connects leaves the kit on its fast poll, which is a
  *   slower product, not a broken one.
  */
@@ -104,12 +115,14 @@ export class ChatRealtimeConnection {
             `${this.options.url.replace(/\/+$/u, '')}${CHAT_REALTIME_NAMESPACE}`,
             {
                 auth: (callback) => {
-                    void this.options.client
-                        .getAccessToken()
-                        .catch(() => null)
-                        .then((token) => {
+                    void this.credential().then(
+                        (token) => {
                             callback({ token: token ?? '' });
-                        });
+                        },
+                        () => {
+                            this.ticketFailed();
+                        },
+                    );
                 },
                 // A WebSocket from the first byte: long-polling would hold an HTTP request open per tab,
                 // and the gateway is never reached through anything that cannot upgrade.
@@ -140,6 +153,25 @@ export class ChatRealtimeConnection {
         this.setStatus('connecting');
     }
 
+    /** What the next attempt presents. Rejects only when a ticket was asked for and did not come. */
+    private async credential(): Promise<Maybe<string>> {
+        if (this.options.useTicket === true) return (await this.options.client.createRealtimeTicket()).ticket;
+
+        return this.options.client.getAccessToken().catch(() => null);
+    }
+
+    /**
+     * The attempt is abandoned rather than sent with no credential: the gateway would refuse that as
+     * `UNAUTHENTICATED`, which is final, when all that happened is `chat-api` not answering for a moment.
+     */
+    private ticketFailed(): void {
+        const socket = this.socket;
+        if (socket === null) return;
+        socket.disconnect();
+        this.setStatus('disconnected');
+        this.scheduleReconnect({ untilReleased: true });
+    }
+
     private async recoverFrom(error: GatewayError): Promise<void> {
         if (error.code !== ErrorCode.TOKEN_EXPIRED || !(await this.options.client.refreshAccessToken())) {
             this.setStatus('disconnected');
@@ -150,8 +182,13 @@ export class ChatRealtimeConnection {
         this.scheduleReconnect();
     }
 
-    private scheduleReconnect(): void {
-        if (this.socket === null || this.reconnectTimer !== null || this.attempts >= MAX_RECONNECT_ATTEMPTS) return;
+    /**
+     * `untilReleased` lifts the attempt cap: a ticket that did not arrive is an outage to wait out, where
+     * an expired token that keeps being refused is a session that will not come back.
+     */
+    private scheduleReconnect({ untilReleased = false }: { untilReleased?: boolean } = {}): void {
+        if (this.socket === null || this.reconnectTimer !== null) return;
+        if (!untilReleased && this.attempts >= MAX_RECONNECT_ATTEMPTS) return;
 
         const delay = RECONNECT_DELAYS_MS[Math.min(this.attempts, RECONNECT_DELAYS_MS.length - 1)];
         this.attempts += 1;

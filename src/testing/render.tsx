@@ -1,3 +1,4 @@
+import type { Maybe, UUID } from '@iveri/contracts';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 
@@ -23,6 +24,9 @@ export function createHarness(
         socketFactory?: ChatSocketFactory;
         translate?: ChatTranslate;
         locale?: string;
+        /** `'omit'` leaves the prop out, as a customer's app may; the default is `ME`. */
+        currentUserId?: Maybe<UUID> | 'omit';
+        realtimeTicket?: boolean;
     } = {},
 ): TestHarness {
     const stub = createFetchStub();
@@ -44,7 +48,8 @@ export function createHarness(
                 locale={options.locale ?? 'en'}
                 timeZone="Asia/Tbilisi"
                 translate={options.translate ?? keyTranslate}
-                currentUserId={ME}
+                realtimeTicket={options.realtimeTicket}
+                {...(options.currentUserId === 'omit' ? {} : { currentUserId: options.currentUserId ?? ME })}
             >
                 {children}
             </ChatProvider>

@@ -189,6 +189,7 @@ export function createChatClient(options: ChatClientOptions): ChatClient {
     return {
         getAccessToken,
         refreshAccessToken,
+        createRealtimeTicket: () => request({ method: 'POST', path: '/realtime/ticket' }),
 
         getProfile: (opts) => get('/me', undefined, opts),
         createProfile: (body) => request({ method: 'POST', path: '/me/profile', body }),
