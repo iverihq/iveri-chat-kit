@@ -43,6 +43,17 @@ export const CHAT_PRODUCT_TEXT_MESSAGE_KEYS = [
     'chat.title.social-direct',
 ] as const;
 
+/**
+ * Keys `chat-api` hands a client to translate outside a conversation: why a person is restricted
+ * (`ChatProfile.sanctionReasonKey`; a banned person is refused with the `suspended` refusal, and the
+ * profile's `status` is what tells the two apart) and the one line a lock screen shows.
+ */
+export const CHAT_ACCOUNT_MESSAGE_KEYS = [
+    'chat.sanction.suspended',
+    'chat.sanction.banned',
+    'chat.push.title',
+] as const;
+
 /** One key per refusal `chat-api` can send, derived from the enum so a new member cannot be forgotten. */
 export const CHAT_REFUSAL_MESSAGE_KEYS = Object.values(ChatRefusal).map(
     (refusal) => `chat.refusal.${refusal}` as const,
@@ -276,6 +287,7 @@ export type ChatKitMessageKey =
     | (typeof INTERFACE_KEYS)[number]
     | (typeof CHAT_SYSTEM_MESSAGE_KEYS)[number]
     | (typeof CHAT_PRODUCT_TEXT_MESSAGE_KEYS)[number]
+    | (typeof CHAT_ACCOUNT_MESSAGE_KEYS)[number]
     | (typeof CHAT_REFUSAL_MESSAGE_KEYS)[number]
     | (typeof CHAT_REPORT_REASON_MESSAGE_KEYS)[number];
 
@@ -291,6 +303,7 @@ export const CHAT_KIT_MESSAGE_KEYS: readonly ChatKitMessageKey[] = [
     ...INTERFACE_KEYS,
     ...CHAT_SYSTEM_MESSAGE_KEYS,
     ...CHAT_PRODUCT_TEXT_MESSAGE_KEYS,
+    ...CHAT_ACCOUNT_MESSAGE_KEYS,
     ...CHAT_REFUSAL_MESSAGE_KEYS,
     ...CHAT_REPORT_REASON_MESSAGE_KEYS,
 ];
