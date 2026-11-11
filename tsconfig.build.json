@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // The react variant sets `noEmit` for Vite apps, where Vite owns the emit. This is a library.
+    "noEmit": false,
+    // Only the build has a `rootDir`: type-checking also covers the gallery and the test config
+    // beside `src/`, which a `rootDir` would reject for a reason that only matters when emitting.
+    "rootDir": "./src",
+    "declaration": true,
+    // Maps would point at `src/`, which is not published.
+    "declarationMap": false,
+    "sourceMap": false,
+    "allowImportingTsExtensions": false
+  },
+  // The specs, the test setup and the fixtures the specs and the gallery share are never shipped.
+  "include": ["src/**/*"],
+  "exclude": ["src/**/*.spec.ts", "src/**/*.spec.tsx", "src/test-setup.ts", "src/testing/**"]
+}

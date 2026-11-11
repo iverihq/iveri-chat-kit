@@ -1,0 +1,35 @@
+/**
+ * `@iveri/chat-kit/web`'s styles, for Tailwind 4. Import it after the app's theme:
+ *
+ *     @import 'tailwindcss';
+ *     @import '@iveri/react-kit/theme.css';
+ *     @import '@iveri/chat-kit/web.css';
+ *
+ * The components are written in the fleet's semantic tokens (`bg-surface`, `text-ink`, `bg-accent`…),
+ * never in colours of their own, so they wear whatever palette the app declares: a panel's navy, Ezo's
+ * courtyard. That is why this file holds no colour at all.
+ */
+
+/* The kit's built components are scanned wherever the package is installed. Relative to this file,
+ * so an app never has to know where the package keeps its build. Without it every class the kit uses
+ * that the app does not happen to use too would be missing, and the chat would arrive half-styled. */
+@source '../dist/web';
+
+@theme {
+    /* The three dots of the typing line, rising one after another. A slow, small movement, and only
+     * where motion is welcome: the components apply it under `motion-safe:`. */
+    --animate-chat-typing: chat-typing 1.2s ease-in-out infinite;
+
+    @keyframes chat-typing {
+        0%,
+        60%,
+        100% {
+            opacity: 0.35;
+            transform: translateY(0);
+        }
+        30% {
+            opacity: 1;
+            transform: translateY(-3px);
+        }
+    }
+}

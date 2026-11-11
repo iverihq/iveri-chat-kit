@@ -1,0 +1,7 @@
+@import 'tailwindcss';
+@import '@iveri/react-kit/theme.css';
+@import '../styles/web.css';
+
+/* The gallery renders the kit from source, which the stylesheet's `@source '../dist/web'` does not cover
+ * until a build exists. */
+@source '../src';
