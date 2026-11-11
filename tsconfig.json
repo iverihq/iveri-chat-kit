@@ -1,0 +1,13 @@
+{
+  "extends": "@iveri/tsconfig/react.json",
+  "compilerOptions": {
+    // A published library resolves the way Node does, not the way a bundler forgives: a directory
+    // import that Vite accepts and Node rejects is a compile error here rather than a consumer's
+    // surprise. The same reasoning as `@iveri/react-kit`.
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "outDir": "./dist",
+    "noEmit": true
+  },
+  "include": ["src/**/*", "vite.config.ts", "preview/**/*"]
+}

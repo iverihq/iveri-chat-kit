@@ -1,0 +1,59 @@
+name: Release
+
+# Publishing is driven by a version tag, not by a merge. The version bump lands in the PR; after
+# it merges, the merge commit is tagged and that one tag is pushed:
+#
+#   git tag -a v0.1.0 -m v0.1.0 && git push origin v0.1.0
+#
+# Never `--follow-tags`: it also pushes every older local tag that was never pushed, which
+# publishes versions nobody meant to release.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  # The provenance attestation proving the tarball was built from this commit in this workflow
+  # rather than uploaded from a laptop.
+  id-token: write
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm build
+
+      - run: pnpm test
+
+      # A tag that disagrees with package.json publishes a version nobody can find the source
+      # for. npm versions are permanent, so this is checked before the publish, not after.
+      - name: Verify the tag matches package.json
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match package.json version ${PKG_VERSION}"
+            exit 1
+          fi
+
+      # Publishes with the org-level `NPM_TOKEN` secret: a granular npm token for `@iveri` with
+      # read and write, set to bypass 2FA because a workflow cannot answer a one-time code. npm caps
+      # such a token at 90 days, so a release refused with `E404` on the PUT is the token having
+      # expired, not a missing package — replace the secret and re-run the job.
+      - run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true

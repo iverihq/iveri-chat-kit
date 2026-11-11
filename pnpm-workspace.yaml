@@ -1,0 +1,5 @@
+# pnpm 12 holds back any version published in the last day, a defence against a compromised
+# release of a package somebody else publishes. Our own packages are released from this
+# organization's CI and installed by the next repository minutes later, so only they are exempt.
+minimumReleaseAgeExclude:
+  - '@iveri/*'

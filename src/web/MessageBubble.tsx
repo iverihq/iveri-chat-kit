@@ -1,0 +1,326 @@
+import type { Nullable, UUID } from '@iveri/contracts';
+import { ChatAttachmentKind } from '@iveri/contracts/chat';
+import type { ChatAttachment, ChatConversation, ChatMessage, ChatReplyPreview } from '@iveri/contracts/chat';
+import type { PointerEvent as ReactPointerEvent } from 'react';
+import { useRef, useState } from 'react';
+
+import type { ChatDeleteScope } from '../client/index.js';
+import { useChatContext, useChatText } from '../provider/index.js';
+import {
+    describeError,
+    formatMessageTime,
+    linkify,
+    messagePermissions,
+    replyExcerpt,
+    type ChatReadState,
+    type ChatThreadItem,
+} from '../util/index.js';
+
+import { BlockIcon } from './icons.js';
+import { MessageActions } from './MessageActions.js';
+import { MessageAttachments } from './MessageAttachments.js';
+import { ReactionBar } from './ReactionBar.js';
+import { ReadMark } from './ReadMark.js';
+import { cn, FOCUS_RING } from './style.js';
+
+/** Where a bubble sits in its run, which decides which corners tuck in toward the sender's side. */
+export type BubblePosition = 'single' | 'first' | 'middle' | 'last';
+
+const OWN_CORNERS: Record<BubblePosition, string> = {
+    single: '',
+    first: 'rounded-ee-[5px]',
+    middle: 'rounded-e-[5px]',
+    last: 'rounded-se-[5px]',
+};
+
+const OTHER_CORNERS: Record<BubblePosition, string> = {
+    single: '',
+    first: 'rounded-es-[5px]',
+    middle: 'rounded-s-[5px]',
+    last: 'rounded-ss-[5px]',
+};
+
+const LONG_PRESS_MS = 450;
+
+export interface MessageBubbleProps {
+    item: ChatThreadItem;
+    conversation: ChatConversation;
+    position: BubblePosition;
+    readState: ChatReadState | null;
+    isHighlighted: boolean;
+    now: Date;
+    onReply: (message: ChatMessage) => void;
+    onEdit: (message: ChatMessage) => void;
+    onReport: (message: ChatMessage) => void;
+    onReact: (messageId: UUID, emoji: Nullable<string>) => void;
+    onDelete: (messageId: UUID, scope: ChatDeleteScope) => Promise<void>;
+    onJumpTo: (seq: number) => void;
+    onOpenPhoto: (photos: ChatAttachment[], index: number) => void;
+    onRetry: (clientMessageId: UUID) => void;
+    onDiscard: (clientMessageId: UUID) => void;
+    onMediaLoad?: () => void;
+}
+
+function MessageText({ text }: Readonly<{ text: string }>): React.JSX.Element {
+    return (
+        <p className="text-body break-words whitespace-pre-wrap text-ink [overflow-wrap:anywhere]">
+            {linkify(text).map((part, index) =>
+                part.type === 'link' ? (
+                    <a
+                        key={`link-${index}`}
+                        href={part.href}
+                        target="_blank"
+                        rel="noopener noreferrer nofollow"
+                        className={cn('text-link underline underline-offset-2 hover:text-accent', FOCUS_RING)}
+                    >
+                        {part.text}
+                    </a>
+                ) : (
+                    <span key={`text-${index}`}>{part.text}</span>
+                ),
+            )}
+        </p>
+    );
+}
+
+function ReplyQuote({
+    reply,
+    isOwn,
+    onJumpTo,
+}: Readonly<{ reply: ChatReplyPreview; isOwn: boolean; onJumpTo: (seq: number) => void }>): React.JSX.Element {
+    const t = useChatText();
+    const { translate } = useChatContext();
+    const name = reply.senderName ?? '';
+
+    return (
+        <button
+            type="button"
+            onClick={() => {
+                onJumpTo(reply.seq);
+            }}
+            aria-label={t('chat.message.reply-quote', { name })}
+            className={cn(
+                'mb-1.5 flex w-full min-w-40 flex-col rounded-control border-s-[3px] border-accent px-2.5 py-1.5 text-start transition-colors duration-fast',
+                isOwn ? 'bg-surface/70 hover:bg-surface' : 'bg-canvas hover:bg-raised',
+                FOCUS_RING,
+            )}
+        >
+            <span className="truncate text-caption font-semibold text-accent">{name}</span>
+            <span className={cn('line-clamp-2 text-small', reply.isDeleted ? 'text-faint italic' : 'text-muted')}>
+                {replyExcerpt(reply, translate)}
+            </span>
+        </button>
+    );
+}
+
+/**
+ * One message in a thread, confirmed or still on its way.
+ *
+ * Mine sit on the end side in the accent's soft wash; everybody else's on the start side, white with a
+ * hairline. Consecutive bubbles from one sender tuck their sender-side corners in, so a run reads as one
+ * turn of speech. Actions appear on hover or focus, and from a right click or a long press, which is what
+ * a phone offers instead of hovering.
+ */
+export function MessageBubble({
+    item,
+    conversation,
+    position,
+    readState,
+    isHighlighted,
+    now,
+    onReply,
+    onEdit,
+    onReport,
+    onReact,
+    onDelete,
+    onJumpTo,
+    onOpenPhoto,
+    onRetry,
+    onDiscard,
+    onMediaLoad,
+}: Readonly<MessageBubbleProps>): React.JSX.Element {
+    const t = useChatText();
+    const { translate, locale, timeZone } = useChatContext();
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const message = item.type === 'message' ? item.message : null;
+    const pending = item.type === 'pending' ? item.pending : null;
+    const isOwn = message?.isOwn ?? true;
+    const body = message?.body ?? pending?.body ?? null;
+    const attachments = message?.attachments ?? pending?.attachments ?? [];
+    const replyTo = message?.replyTo ?? pending?.replyTo ?? null;
+    const sentAt = message?.sentAt ?? pending?.createdAt ?? now.toISOString();
+    const senderName = message?.sender?.displayName ?? t('chat.common.you');
+    const isDeleted = message?.isDeleted ?? false;
+    const isPhotoOnly =
+        !isDeleted &&
+        (body === null || body.length === 0) &&
+        replyTo === null &&
+        attachments.length > 0 &&
+        attachments.every((attachment) => attachment.kind === ChatAttachmentKind.PHOTO);
+    const permissions = message === null ? null : messagePermissions(message, conversation, now);
+
+    const cancelPress = (): void => {
+        if (pressTimer.current !== null) clearTimeout(pressTimer.current);
+        pressTimer.current = null;
+    };
+
+    const onPointerDown = (event: ReactPointerEvent): void => {
+        if (event.pointerType !== 'touch' || permissions === null) return;
+        cancelPress();
+        pressTimer.current = setTimeout(() => {
+            setIsMenuOpen(true);
+        }, LONG_PRESS_MS);
+    };
+
+    const meta = (
+        <span
+            className={cn(
+                'flex items-center justify-end gap-1.5 text-2xs tabular-nums',
+                isPhotoOnly
+                    ? 'absolute end-2 bottom-2 rounded-full bg-ink/55 px-2 py-0.5 text-white'
+                    : 'mt-0.5 text-faint',
+            )}
+        >
+            {message?.editedAt !== null && message?.editedAt !== undefined && !isDeleted && (
+                <span>{t('chat.message.edited')}</span>
+            )}
+            <time dateTime={sentAt}>{formatMessageTime(sentAt, { locale, timeZone })}</time>
+            {readState !== null && <ReadMark state={readState} />}
+        </span>
+    );
+
+    return (
+        <div
+            data-seq={message?.seq}
+            data-message-id={message?.id}
+            className={cn(
+                'group/message relative flex w-fit max-w-full flex-col',
+                isOwn ? 'items-end self-end' : 'items-start',
+            )}
+            onContextMenu={(event) => {
+                if (permissions === null) return;
+                event.preventDefault();
+                setIsMenuOpen(true);
+            }}
+            onPointerDown={onPointerDown}
+            onPointerUp={cancelPress}
+            onPointerLeave={cancelPress}
+            onPointerMove={(event) => {
+                if (event.pointerType === 'touch' && (Math.abs(event.movementX) > 4 || Math.abs(event.movementY) > 4)) {
+                    cancelPress();
+                }
+            }}
+        >
+            <div
+                className={cn(
+                    'relative max-w-full rounded-card border transition-shadow duration-normal',
+                    isPhotoOnly ? 'p-1' : 'px-3.5 pt-2 pb-1.5',
+                    isDeleted
+                        ? 'border-dashed border-line-strong bg-transparent'
+                        : isOwn
+                          ? 'border-accent-line bg-accent-soft'
+                          : 'border-line bg-surface shadow-sm',
+                    pending?.status === 'sending' && 'opacity-75',
+                    pending?.status === 'failed' && 'border-critical/50',
+                    (isOwn ? OWN_CORNERS : OTHER_CORNERS)[position],
+                    isHighlighted && 'ring-2 ring-accent ring-offset-2 ring-offset-canvas',
+                )}
+            >
+                {isDeleted ? (
+                    <p className="flex items-center gap-1.5 text-small text-muted italic">
+                        <BlockIcon className="h-4 w-4" />
+                        {t('chat.message.deleted')}
+                    </p>
+                ) : (
+                    <>
+                        {replyTo !== null && <ReplyQuote reply={replyTo} isOwn={isOwn} onJumpTo={onJumpTo} />}
+                        {attachments.length > 0 && (
+                            <div className={cn(body !== null && body.length > 0 && 'mb-1.5')}>
+                                <MessageAttachments
+                                    attachments={attachments}
+                                    senderName={senderName}
+                                    isOwn={isOwn}
+                                    onOpenPhoto={onOpenPhoto}
+                                    onMediaLoad={onMediaLoad}
+                                />
+                            </div>
+                        )}
+                        {body !== null && body.length > 0 && <MessageText text={body} />}
+                    </>
+                )}
+                {meta}
+            </div>
+
+            {message !== null && (
+                <ReactionBar
+                    reactions={message.reactions}
+                    isOwn={isOwn}
+                    disabled={permissions?.canReact !== true}
+                    onReact={(emoji) => {
+                        onReact(message.id, emoji);
+                    }}
+                />
+            )}
+
+            {pending?.status === 'failed' && (
+                <div role="alert" className="mt-1 flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-caption">
+                    <span className="text-critical">
+                        {t('chat.message.failed')}
+                        {pending.error !== null && ` · ${describeError(pending.error, translate)}`}
+                    </span>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            onRetry(pending.clientMessageId);
+                        }}
+                        className={cn('font-semibold text-link hover:underline', FOCUS_RING)}
+                    >
+                        {t('chat.common.retry')}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            onDiscard(pending.clientMessageId);
+                        }}
+                        className={cn('font-medium text-muted hover:text-ink', FOCUS_RING)}
+                    >
+                        {t('chat.message.discard')}
+                    </button>
+                </div>
+            )}
+
+            {message !== null && permissions !== null && !isDeleted && (
+                <MessageActions
+                    message={message}
+                    permissions={permissions}
+                    isMenuOpen={isMenuOpen}
+                    onMenuOpenChange={setIsMenuOpen}
+                    onReply={() => {
+                        onReply(message);
+                    }}
+                    onReact={(emoji) => {
+                        onReact(message.id, emoji);
+                    }}
+                    onEdit={() => {
+                        onEdit(message);
+                    }}
+                    onDelete={(scope) => onDelete(message.id, scope)}
+                    onReport={() => {
+                        onReport(message);
+                    }}
+                    className={cn(
+                        // Over the bubble's top edge, growing toward the middle of the thread, where there is room
+                        // even when the bubble is a single word.
+                        'absolute -top-5 z-20 transition-opacity duration-fast',
+                        isOwn ? 'end-2' : 'start-2',
+                        isMenuOpen
+                            ? 'opacity-100'
+                            : 'pointer-events-none opacity-0 group-focus-within/message:pointer-events-auto group-focus-within/message:opacity-100 [@media(hover:hover)]:group-hover/message:pointer-events-auto [@media(hover:hover)]:group-hover/message:opacity-100',
+                    )}
+                />
+            )}
+        </div>
+    );
+}
