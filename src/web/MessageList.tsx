@@ -263,7 +263,7 @@ export function MessageList({
 
                     return (
                         <section key={section.day} aria-label={dayLabel} className="pb-2">
-                            <div className="sticky top-0 z-10 flex justify-center py-2">
+                            <div className="flex justify-center py-2">
                                 <span className="rounded-full border border-line bg-surface px-3 py-0.5 text-caption font-medium text-muted shadow-sm">
                                     {dayLabel}
                                 </span>

@@ -52,7 +52,7 @@ export interface ChatConversationSettings {
  * answer (`PIN_LIMIT` past five pins) or the refetch after it settles where it really is.
  */
 export function useConversationSettings(conversationId: Maybe<UUID>): ChatConversationSettings {
-    const { client } = useChatContext();
+    const { client, readMarks } = useChatContext();
     const queryClient = useQueryClient();
     const id = conversationId ?? NO_ID;
 
@@ -92,7 +92,10 @@ export function useConversationSettings(conversationId: Maybe<UUID>): ChatConver
                 }));
             }
         },
-        onSuccess: (summary) => {
+        onSuccess: (summary, action) => {
+            // Once accepted, reading counts: forget any position reported while it was a request, so the open
+            // thread reports it again rather than leaving the unread count up until a reload.
+            if (action.type === 'accept') readMarks.delete(id);
             if (summary !== null) updateConversationEverywhere(queryClient, id, () => summary);
         },
         onSettled: async (_data, _error, action) => {

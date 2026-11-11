@@ -143,6 +143,78 @@ describe('ChatThread', () => {
     });
 });
 
+describe('ChatThread after a request is accepted', () => {
+    it('reports reading once accepted, without a reload, and never while it was a request', async () => {
+        const harness = createHarness();
+        let accepted = false;
+        harness.stub.on('GET', `/conversations/${CONVERSATION}`, () => ({
+            body: accepted
+                ? conversation({ lastSeq: 2, unreadCount: 2 })
+                : conversation({
+                      isRequest: true,
+                      canSend: false,
+                      refusal: ChatRefusal.REQUEST_PENDING,
+                      lastSeq: 2,
+                      unreadCount: 2,
+                  }),
+        }));
+        harness.stub.on('GET', `/conversations/${CONVERSATION}/messages`, () => ({
+            body: { hasOlder: false, lastSeq: 2, messages: [message({ seq: 1 }), message({ seq: 2 })] },
+        }));
+        harness.stub.on('GET', '/me', () => ({ body: { userId: ME, isNetwork: true } }));
+        harness.stub.on('GET', '/blocks', () => ({ body: [] }));
+        harness.stub.on('POST', `/conversations/${CONVERSATION}/accept`, () => {
+            accepted = true;
+
+            return { body: conversation({ lastSeq: 2, unreadCount: 2 }) };
+        });
+        harness.stub.on('POST', `/conversations/${CONVERSATION}/read`, () => ({ status: 204 }));
+        const reads = (): number => harness.stub.requests.filter((request) => request.path.endsWith('/read')).length;
+
+        render(<ChatThread conversationId={CONVERSATION} />, { wrapper: harness.wrapper });
+        await screen.findByText('Message 2');
+        await new Promise((resolve) => setTimeout(resolve, 700));
+        expect(reads()).toBe(0);
+
+        await userEvent.click(screen.getByRole('button', { name: 'chat.thread.request.accept' }));
+
+        await waitFor(
+            () => {
+                expect(harness.stub.requests.find((request) => request.path.endsWith('/read'))?.body).toEqual({
+                    seq: 2,
+                });
+            },
+            { timeout: 3000 },
+        );
+    });
+});
+
+describe('ChatThread layout', () => {
+    it('anchors the reaction picker on the side with room, and lets the day label scroll with its day', async () => {
+        const harness = threadHarness();
+        harness.stub.on('GET', `/conversations/${CONVERSATION}/messages`, () => ({
+            body: {
+                hasOlder: false,
+                lastSeq: 2,
+                messages: [message({ seq: 1, body: 'Theirs' }), ownMessage({ seq: 2, body: 'Mine' })],
+            },
+        }));
+
+        render(<ChatThread conversationId={CONVERSATION} />, { wrapper: harness.wrapper });
+        const log = await screen.findByRole('log');
+        await within(log).findByText('Mine');
+
+        const [theirs, mine] = within(log).getAllByRole('button', { name: 'chat.reaction.add' });
+        await userEvent.click(theirs);
+        expect(within(log).getByRole('group', { name: 'chat.reaction.quick' })).toHaveClass('start-0');
+        await userEvent.click(theirs);
+        await userEvent.click(mine);
+        expect(within(log).getByRole('group', { name: 'chat.reaction.quick' })).toHaveClass('end-0');
+
+        expect(log.querySelector('.sticky')).toBeNull();
+    });
+});
+
 describe('ChatInbox', () => {
     it('lists conversations with unread counts in words, and moves between folders', async () => {
         const harness = createHarness();

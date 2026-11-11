@@ -58,7 +58,11 @@ describe('CHAT_KIT_MESSAGE_KEYS', () => {
         const written = literalKeys();
         // Built from a value rather than written out: `chat.inbox.tab.${folder}` on a phone, and the
         // web's tables of the same keys, which are literals and therefore counted.
-        const stale = CHAT_KIT_MESSAGE_KEYS.filter((key) => !SERVER_KEYS.has(key) && !written.has(key));
+        // The date names are composed from a value (`chat.date.month.${name}`), never written out whole.
+        const composed = ['chat.date.weekday.', 'chat.date.month.'];
+        const stale = CHAT_KIT_MESSAGE_KEYS.filter(
+            (key) => !SERVER_KEYS.has(key) && !written.has(key) && !composed.some((prefix) => key.startsWith(prefix)),
+        );
         expect(stale).toEqual([]);
     });
 

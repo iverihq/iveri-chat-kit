@@ -302,10 +302,10 @@ export function ChatThreadScreen({
                 }}
                 onScroll={(event) => {
                     atNewest.current = event.nativeEvent.contentOffset.y < 48;
-                    if (atNewest.current && newestSeq > data.myLastReadSeq) markRead(newestSeq);
+                    if (atNewest.current && !data.isRequest && newestSeq > data.myLastReadSeq) markRead(newestSeq);
                 }}
                 onContentSizeChange={() => {
-                    if (newestSeq > data.myLastReadSeq) markRead(newestSeq);
+                    if (!data.isRequest && newestSeq > data.myLastReadSeq) markRead(newestSeq);
                 }}
                 scrollEventThrottle={250}
                 ListFooterComponent={
