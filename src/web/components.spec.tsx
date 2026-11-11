@@ -276,6 +276,7 @@ describe('ChatInbox', () => {
                                       kind: ChatMessageKind.TEXT,
                                       excerpt: 'See you',
                                       systemKey: null,
+                                      systemVariables: null,
                                       senderName: 'Nino',
                                       isOwn: false,
                                       isDeleted: false,
