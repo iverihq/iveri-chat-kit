@@ -48,7 +48,7 @@ export function ReportDialog({ target, onClose }: Readonly<ReportDialogProps>): 
                     </button>
                 }
             >
-                <p role="status" className="text-body text-ink-soft">
+                <p role="status" className="text-body text-chat-ink-soft">
                     {t('chat.report.sent')}
                 </p>
             </ChatDialog>
@@ -87,17 +87,17 @@ export function ReportDialog({ target, onClose }: Readonly<ReportDialogProps>): 
             }
         >
             <fieldset aria-labelledby={groupId} className="flex flex-col gap-1">
-                <legend id={groupId} className="mb-2 text-label font-medium text-ink-soft">
+                <legend id={groupId} className="mb-2 text-label font-medium text-chat-ink-soft">
                     {t('chat.report.reason')}
                 </legend>
                 {Object.values(ChatReportReason).map((value) => (
                     <label
                         key={value}
                         className={cn(
-                            'flex cursor-pointer items-center gap-3 rounded-control border px-3 py-2.5 text-body transition-colors duration-fast',
+                            'flex cursor-pointer items-center gap-3 rounded-chat-control border px-3 py-2.5 text-body transition-colors duration-fast',
                             reason === value
-                                ? 'border-accent bg-accent-soft text-ink'
-                                : 'border-line text-ink hover:bg-raised',
+                                ? 'border-chat-accent bg-chat-accent-soft text-chat-ink'
+                                : 'border-chat-line text-chat-ink hover:bg-chat-raised',
                         )}
                     >
                         <input
@@ -116,8 +116,9 @@ export function ReportDialog({ target, onClose }: Readonly<ReportDialogProps>): 
             </fieldset>
 
             <div className="mt-4 flex flex-col gap-2">
-                <label htmlFor={noteId} className="text-label font-medium text-ink-soft">
-                    {t('chat.report.note')} <span className="font-normal text-muted">{t('chat.report.note-hint')}</span>
+                <label htmlFor={noteId} className="text-label font-medium text-chat-ink-soft">
+                    {t('chat.report.note')}{' '}
+                    <span className="font-normal text-chat-muted">{t('chat.report.note-hint')}</span>
                 </label>
                 <textarea
                     id={noteId}
@@ -131,7 +132,9 @@ export function ReportDialog({ target, onClose }: Readonly<ReportDialogProps>): 
                 />
             </div>
 
-            {target.kind === 'message' && <p className="mt-4 text-small text-muted">{t('chat.report.disclosure')}</p>}
+            {target.kind === 'message' && (
+                <p className="mt-4 text-small text-chat-muted">{t('chat.report.disclosure')}</p>
+            )}
             {report.isError && (
                 <p role="alert" className="mt-3 text-small text-critical">
                     {describeError(report.error, translate)}

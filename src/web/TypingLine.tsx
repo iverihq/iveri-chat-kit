@@ -27,13 +27,13 @@ export function TypingLine({
     const text = typingText(names, translate);
 
     return (
-        <div aria-live="polite" className="flex h-6 items-center gap-2 px-5 text-caption text-muted">
+        <div aria-live="polite" className="flex h-6 items-center gap-2 px-5 text-caption text-chat-muted">
             {text !== null && (
                 <>
                     <span aria-hidden="true" className="flex items-center gap-[3px]">
-                        <span className="h-1.5 w-1.5 rounded-full bg-faint motion-safe:animate-chat-typing" />
-                        <span className="h-1.5 w-1.5 rounded-full bg-faint motion-safe:animate-chat-typing [animation-delay:150ms]" />
-                        <span className="h-1.5 w-1.5 rounded-full bg-faint motion-safe:animate-chat-typing [animation-delay:300ms]" />
+                        <span className="h-1.5 w-1.5 rounded-full bg-chat-faint motion-safe:animate-chat-typing" />
+                        <span className="h-1.5 w-1.5 rounded-full bg-chat-faint motion-safe:animate-chat-typing [animation-delay:150ms]" />
+                        <span className="h-1.5 w-1.5 rounded-full bg-chat-faint motion-safe:animate-chat-typing [animation-delay:300ms]" />
                     </span>
                     <span className="truncate">{text}</span>
                 </>

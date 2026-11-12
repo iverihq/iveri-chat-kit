@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 
 import { useChatText } from '../provider/index.js';
 
+import { ChatThemeScope } from './ChatThemeScope.js';
 import { CloseIcon } from './icons.js';
 import { cn, ICON_BUTTON } from './style.js';
 
@@ -87,62 +88,65 @@ export function ChatDialog({
 
     const isMedia = tone === 'media';
 
+    // A portal leaves the theme's element behind, so the dialog carries the theme into `body` itself.
     return createPortal(
-        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
-            <div
-                aria-hidden="true"
-                className={cn('absolute inset-0 animate-fade-in', isMedia ? 'bg-ink/90' : 'bg-ink/40')}
-                onClick={onClose}
-            />
-            <div
-                ref={panel}
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby={titleId}
-                tabIndex={-1}
-                onKeyDown={onKeyDown}
-                className={cn(
-                    'relative flex max-h-[92dvh] w-full flex-col outline-hidden',
-                    isMedia
-                        ? 'h-full max-w-5xl text-white'
-                        : 'animate-rise-in rounded-t-panel bg-surface text-ink shadow-xl sm:max-w-lg sm:rounded-panel',
-                    className,
-                )}
-            >
-                <div className={cn('flex items-center gap-3 px-5 pt-4', isMedia ? 'pb-2' : 'pb-3')}>
-                    <h2
-                        id={titleId}
-                        className={cn(
-                            'min-w-0 flex-1 truncate font-display text-h3 font-semibold',
-                            hideTitle && 'sr-only',
-                            isMedia && 'text-body font-medium text-white/90',
-                        )}
-                    >
-                        {title}
-                    </h2>
-                    <button
-                        type="button"
-                        aria-label={t('chat.common.close')}
-                        onClick={onClose}
-                        className={cn(
-                            ICON_BUTTON,
-                            'ms-auto',
-                            isMedia && 'text-white/80 hover:bg-white/10 hover:text-white',
-                        )}
-                    >
-                        <CloseIcon />
-                    </button>
-                </div>
-                <div className={cn('min-h-0 flex-1 overflow-y-auto', isMedia ? 'px-2 pb-4' : 'px-5 pb-5')}>
-                    {children}
-                </div>
-                {footer !== undefined && (
-                    <div className="flex flex-wrap justify-end gap-2 border-t border-line bg-canvas px-5 py-3 sm:rounded-b-panel">
-                        {footer}
+        <ChatThemeScope>
+            <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
+                <div
+                    aria-hidden="true"
+                    className={cn('absolute inset-0 animate-fade-in', isMedia ? 'bg-chat-ink/90' : 'bg-chat-ink/40')}
+                    onClick={onClose}
+                />
+                <div
+                    ref={panel}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby={titleId}
+                    tabIndex={-1}
+                    onKeyDown={onKeyDown}
+                    className={cn(
+                        'relative flex max-h-[92dvh] w-full flex-col outline-hidden',
+                        isMedia
+                            ? 'h-full max-w-5xl text-white'
+                            : 'animate-rise-in rounded-t-chat-panel bg-chat-surface text-chat-ink shadow-xl sm:max-w-lg sm:rounded-chat-panel',
+                        className,
+                    )}
+                >
+                    <div className={cn('flex items-center gap-3 px-5 pt-4', isMedia ? 'pb-2' : 'pb-3')}>
+                        <h2
+                            id={titleId}
+                            className={cn(
+                                'min-w-0 flex-1 truncate font-chat-display text-h3 font-semibold',
+                                hideTitle && 'sr-only',
+                                isMedia && 'text-body font-medium text-white/90',
+                            )}
+                        >
+                            {title}
+                        </h2>
+                        <button
+                            type="button"
+                            aria-label={t('chat.common.close')}
+                            onClick={onClose}
+                            className={cn(
+                                ICON_BUTTON,
+                                'ms-auto',
+                                isMedia && 'text-white/80 hover:bg-white/10 hover:text-white',
+                            )}
+                        >
+                            <CloseIcon />
+                        </button>
                     </div>
-                )}
+                    <div className={cn('min-h-0 flex-1 overflow-y-auto', isMedia ? 'px-2 pb-4' : 'px-5 pb-5')}>
+                        {children}
+                    </div>
+                    {footer !== undefined && (
+                        <div className="flex flex-wrap justify-end gap-2 border-t border-chat-line bg-chat-canvas px-5 py-3 sm:rounded-b-chat-panel">
+                            {footer}
+                        </div>
+                    )}
+                </div>
             </div>
-        </div>,
+        </ChatThemeScope>,
         document.body,
     );
 }

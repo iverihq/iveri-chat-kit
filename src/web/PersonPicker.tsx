@@ -137,7 +137,7 @@ export function PersonPicker({
             <div className="flex flex-col gap-4">
                 {mode === 'group' && (
                     <div className="flex flex-col gap-2">
-                        <label htmlFor={titleId} className="text-label font-medium text-ink-soft">
+                        <label htmlFor={titleId} className="text-label font-medium text-chat-ink-soft">
                             {t('chat.people.group-name')}
                         </label>
                         <input
@@ -154,7 +154,7 @@ export function PersonPicker({
 
                 {isMulti && selected.length > 0 && (
                     <div className="flex flex-col gap-2">
-                        <p className="text-caption font-semibold text-faint">
+                        <p className="text-caption font-semibold text-chat-faint">
                             {t('chat.people.selected', { count: selected.length })}
                         </p>
                         <ul className="flex flex-wrap gap-1.5">
@@ -167,7 +167,7 @@ export function PersonPicker({
                                             choose(person);
                                         }}
                                         className={cn(
-                                            'flex items-center gap-1.5 rounded-full border border-accent-line bg-accent-soft py-0.5 ps-0.5 pe-2 text-caption font-medium text-accent',
+                                            'flex items-center gap-1.5 rounded-full border border-chat-accent-line bg-chat-accent-soft py-0.5 ps-0.5 pe-2 text-caption font-medium text-chat-accent',
                                             FOCUS_RING,
                                         )}
                                     >
@@ -182,7 +182,7 @@ export function PersonPicker({
                 )}
 
                 <div className="relative">
-                    <SearchIcon className="pointer-events-none absolute start-3 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-faint" />
+                    <SearchIcon className="pointer-events-none absolute start-3 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-chat-faint" />
                     <input
                         type="search"
                         value={query}
@@ -197,14 +197,16 @@ export function PersonPicker({
                 </div>
 
                 <section aria-label={search.isActive ? t('chat.people.results') : t('chat.people.contacts')}>
-                    <h3 className="pb-1 text-caption font-semibold text-faint">
+                    <h3 className="pb-1 text-caption font-semibold text-chat-faint">
                         {search.isActive ? t('chat.people.results') : t('chat.people.contacts')}
                     </h3>
                     {query.trim().length > 0 && !search.isActive && (
-                        <p className="py-3 text-small text-muted">{t('chat.people.search-hint')}</p>
+                        <p className="py-3 text-small text-chat-muted">{t('chat.people.search-hint')}</p>
                     )}
                     {search.isActive && !search.isFetching && people.length === 0 && (
-                        <p className="py-3 text-small text-muted">{t('chat.people.empty', { query: search.query })}</p>
+                        <p className="py-3 text-small text-chat-muted">
+                            {t('chat.people.empty', { query: search.query })}
+                        </p>
                     )}
                     <ul className="flex flex-col gap-0.5">
                         {people.map((person) => {
@@ -227,8 +229,8 @@ export function PersonPicker({
                                             choose(person);
                                         }}
                                         className={cn(
-                                            'flex w-full items-center gap-3 rounded-card px-2.5 py-2 text-start transition-colors duration-fast hover:bg-raised',
-                                            chosen && 'bg-accent-soft',
+                                            'flex w-full items-center gap-3 rounded-chat-card px-2.5 py-2 text-start transition-colors duration-fast hover:bg-chat-raised',
+                                            chosen && 'bg-chat-accent-soft',
                                             FOCUS_RING,
                                         )}
                                     >
@@ -239,11 +241,11 @@ export function PersonPicker({
                                             className="h-10 w-10"
                                         />
                                         <span className="flex min-w-0 flex-1 flex-col">
-                                            <span className="truncate text-body font-medium text-ink">
+                                            <span className="truncate text-body font-medium text-chat-ink">
                                                 {person.displayName}
                                             </span>
                                             {person.handle !== null && (
-                                                <span className="truncate text-caption text-muted">
+                                                <span className="truncate text-caption text-chat-muted">
                                                     @{person.handle}
                                                 </span>
                                             )}
@@ -254,8 +256,8 @@ export function PersonPicker({
                                                 className={cn(
                                                     'flex h-5 w-5 items-center justify-center rounded-full border',
                                                     chosen
-                                                        ? 'border-accent bg-accent text-accent-ink'
-                                                        : 'border-line-strong',
+                                                        ? 'border-chat-accent bg-chat-accent text-chat-accent-ink'
+                                                        : 'border-chat-line-strong',
                                                 )}
                                             >
                                                 {chosen && <CheckIcon className="h-3.5 w-3.5" />}

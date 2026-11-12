@@ -94,7 +94,7 @@ export function GroupInfo({
     if (data === undefined) {
         return (
             <aside
-                className="flex h-full items-center justify-center bg-surface p-6 text-small text-muted"
+                className="flex h-full items-center justify-center bg-chat-surface p-6 text-small text-chat-muted"
                 aria-busy="true"
             >
                 {conversation.isError ? describeError(conversation.error, translate) : t('chat.common.loading')}
@@ -183,9 +183,9 @@ export function GroupInfo({
     };
 
     return (
-        <aside className="flex h-full min-h-0 flex-col bg-surface">
-            <div className="flex items-center gap-2 border-b border-line px-4 py-3">
-                <h2 className="min-w-0 flex-1 truncate font-display text-h3 font-semibold text-ink">
+        <aside className="flex h-full min-h-0 flex-col bg-chat-surface">
+            <div className="flex items-center gap-2 border-b border-chat-line px-4 py-3">
+                <h2 className="min-w-0 flex-1 truncate font-chat-display text-h3 font-semibold text-chat-ink">
                     {isGroup ? t('chat.group.title') : t('chat.action.details')}
                 </h2>
                 {onClose !== undefined && (
@@ -200,7 +200,7 @@ export function GroupInfo({
                     <ChatAvatar name={heading.title} image={heading.avatar} size="lg" />
                     {renaming === null ? (
                         <div className="flex items-center gap-1">
-                            <p className="font-display text-h2 font-bold text-ink">{heading.title}</p>
+                            <p className="font-chat-display text-h2 font-bold text-chat-ink">{heading.title}</p>
                             {manages && (
                                 <button
                                     type="button"
@@ -241,13 +241,13 @@ export function GroupInfo({
                             </button>
                         </form>
                     )}
-                    {heading.label !== null && <p className="text-small text-ink-soft">{heading.label}</p>}
-                    {heading.subtitle !== null && <p className="text-small text-muted">{heading.subtitle}</p>}
+                    {heading.label !== null && <p className="text-small text-chat-ink-soft">{heading.label}</p>}
+                    {heading.subtitle !== null && <p className="text-small text-chat-muted">{heading.subtitle}</p>}
                     {isDirect && other?.handle !== null && other?.handle !== undefined && (
-                        <p className="text-small text-muted">@{other.handle}</p>
+                        <p className="text-small text-chat-muted">@{other.handle}</p>
                     )}
                     {heading.lastActiveAt !== null && (
-                        <p className="text-caption text-faint">
+                        <p className="text-caption text-chat-faint">
                             {formatLastActive(heading.lastActiveAt, translate, { locale, timeZone, now })}
                         </p>
                     )}
@@ -291,13 +291,13 @@ export function GroupInfo({
                 )}
 
                 {manages && inviteLink !== null && (
-                    <section className="flex flex-col gap-2 rounded-card border border-line bg-canvas p-3">
-                        <h3 className="flex items-center gap-2 text-label font-semibold text-ink">
-                            <LinkIcon className="h-4.5 w-4.5 text-muted" />
+                    <section className="flex flex-col gap-2 rounded-chat-card border border-chat-line bg-chat-canvas p-3">
+                        <h3 className="flex items-center gap-2 text-label font-semibold text-chat-ink">
+                            <LinkIcon className="h-4.5 w-4.5 text-chat-muted" />
                             {t('chat.group.invite')}
                         </h3>
-                        <p className="text-caption text-muted">{t('chat.group.invite-hint')}</p>
-                        <code className="truncate rounded-control bg-surface px-2.5 py-1.5 font-mono text-small text-ink-soft">
+                        <p className="text-caption text-chat-muted">{t('chat.group.invite-hint')}</p>
+                        <code className="truncate rounded-chat-control bg-chat-surface px-2.5 py-1.5 font-mono text-small text-chat-ink-soft">
                             {inviteLink}
                         </code>
                         <div className="flex flex-wrap gap-2">
@@ -332,7 +332,7 @@ export function GroupInfo({
                 {!isDirect && (
                     <section className="flex flex-col gap-1">
                         <div className="flex items-center gap-2 pb-1">
-                            <h3 className="flex-1 text-caption font-semibold text-faint">
+                            <h3 className="flex-1 text-caption font-semibold text-chat-faint">
                                 {t('chat.group.members')} · {new Intl.NumberFormat(locale).format(members.length)}
                             </h3>
                             {manages && (
@@ -356,7 +356,7 @@ export function GroupInfo({
                                 return (
                                     <li
                                         key={participant.userId}
-                                        className="flex items-center gap-3 rounded-card px-1.5 py-1.5"
+                                        className="flex items-center gap-3 rounded-chat-card px-1.5 py-1.5"
                                     >
                                         <ChatAvatar
                                             name={participant.displayName}
@@ -365,16 +365,16 @@ export function GroupInfo({
                                             className="h-10 w-10"
                                         />
                                         <span className="flex min-w-0 flex-1 flex-col">
-                                            <span className="truncate text-body font-medium text-ink">
+                                            <span className="truncate text-body font-medium text-chat-ink">
                                                 {participant.displayName}
                                                 {participant.isMe && (
-                                                    <span className="font-normal text-muted">
+                                                    <span className="font-normal text-chat-muted">
                                                         {' '}
                                                         · {t('chat.common.you')}
                                                     </span>
                                                 )}
                                             </span>
-                                            <span className="truncate text-caption text-muted">
+                                            <span className="truncate text-caption text-chat-muted">
                                                 {label ??
                                                     (isGroup
                                                         ? t(ROLE_KEY[participant.role])

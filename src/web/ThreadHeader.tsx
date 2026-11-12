@@ -87,20 +87,22 @@ export function ThreadHeader({
             <ChatAvatar name={heading.title} image={heading.avatar} size="sm" className="h-10 w-10" />
             <span className="flex min-w-0 flex-1 flex-col">
                 <span className="flex min-w-0 items-center gap-2">
-                    <span className="truncate font-display text-h3 font-semibold text-ink">{heading.title}</span>
+                    <span className="truncate font-chat-display text-h3 font-semibold text-chat-ink">
+                        {heading.title}
+                    </span>
                     {heading.label !== null && (
-                        <span className="shrink-0 rounded-full bg-raised px-2 py-px text-caption font-medium text-ink-soft">
+                        <span className="shrink-0 rounded-full bg-chat-raised px-2 py-px text-caption font-medium text-chat-ink-soft">
                             {heading.label}
                         </span>
                     )}
                 </span>
-                {subtitle !== null && <span className="truncate text-caption text-muted">{subtitle}</span>}
+                {subtitle !== null && <span className="truncate text-caption text-chat-muted">{subtitle}</span>}
             </span>
         </>
     );
 
     return (
-        <header className="flex min-h-16 items-center gap-1 border-b border-line bg-surface px-2 py-2 sm:gap-2 sm:px-4">
+        <header className="flex min-h-16 items-center gap-1 border-b border-chat-line bg-chat-surface px-2 py-2 sm:gap-2 sm:px-4">
             {onBack !== undefined && (
                 <button
                     type="button"
@@ -119,7 +121,7 @@ export function ThreadHeader({
                     onClick={onOpenDetails}
                     aria-label={`${heading.title}. ${t('chat.action.details')}`}
                     className={cn(
-                        'flex min-w-0 flex-1 items-center gap-3 rounded-card px-1.5 py-1 text-start transition-colors duration-fast hover:bg-raised',
+                        'flex min-w-0 flex-1 items-center gap-3 rounded-chat-card px-1.5 py-1 text-start transition-colors duration-fast hover:bg-chat-raised',
                         FOCUS_RING,
                     )}
                 >

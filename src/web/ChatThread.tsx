@@ -16,6 +16,7 @@ import {
 import { conversationHeading, describeError, type ChatMessageWindow } from '../util/index.js';
 
 import { ChatComposer, type ChatComposerProps, type ComposerMode } from './ChatComposer.js';
+import { ChatThemeScope } from './ChatThemeScope.js';
 import { Lightbox } from './Lightbox.js';
 import { MessageList } from './MessageList.js';
 import { ReportDialog, type ReportTarget } from './ReportDialog.js';
@@ -55,13 +56,8 @@ function nextFrame(): Promise<void> {
     });
 }
 
-/**
- * One conversation: its header, its messages, who is typing, and the composer.
- *
- * Holds the realtime connection while mounted and falls back to polling without it. Reports reading
- * when the newest message is on screen and the page is visible, never merely because it was loaded.
- */
-export function ChatThread({
+/** The component itself, inside the theme scope the exported one adds. */
+function ChatThreadView({
     conversationId,
     onBack,
     backLabel,
@@ -154,11 +150,11 @@ export function ChatThread({
         return (
             <section
                 className={cn(
-                    'flex h-full flex-col items-center justify-center gap-3 bg-canvas p-8 text-center',
+                    'flex h-full flex-col items-center justify-center gap-3 bg-chat-canvas p-8 text-center',
                     className,
                 )}
             >
-                <p role="alert" className="text-body text-ink-soft">
+                <p role="alert" className="text-body text-chat-ink-soft">
                     {conversation.error.status === 404
                         ? t('chat.error.not-found')
                         : describeError(conversation.error, translate)}
@@ -172,15 +168,15 @@ export function ChatThread({
 
     if (conversation.data === undefined) {
         return (
-            <section aria-busy="true" className={cn('flex h-full flex-col bg-canvas', className)}>
+            <section aria-busy="true" className={cn('flex h-full flex-col bg-chat-canvas', className)}>
                 <span className="sr-only">{t('chat.common.loading')}</span>
-                {showHeader && <div className="h-16 border-b border-line bg-surface" />}
+                {showHeader && <div className="h-16 border-b border-chat-line bg-chat-surface" />}
                 <div className="flex flex-1 flex-col justify-end gap-3 p-5" aria-hidden="true">
                     {['w-2/5', 'w-1/3 self-end', 'w-1/2', 'w-1/4 self-end'].map((width) => (
                         <span
                             key={width}
                             className={cn(
-                                'h-10 animate-shimmer rounded-card bg-linear-to-r from-sunken via-raised to-sunken bg-[length:200%_100%]',
+                                'h-10 animate-shimmer rounded-chat-card bg-linear-to-r from-chat-sunken via-chat-raised to-chat-sunken bg-[length:200%_100%]',
                                 width,
                             )}
                         />
@@ -194,7 +190,7 @@ export function ChatThread({
     const heading = conversationHeading(data, translate);
 
     return (
-        <section className={cn('flex h-full min-h-0 flex-col bg-canvas', className)}>
+        <section className={cn('flex h-full min-h-0 flex-col bg-chat-canvas', className)}>
             {showHeader && (
                 <ThreadHeader
                     conversation={data}
@@ -206,17 +202,17 @@ export function ChatThread({
             )}
 
             {data.isRequest && (
-                <div className="border-b border-line bg-surface px-4 py-3 sm:px-6">
-                    <p className="text-label font-semibold text-ink">
+                <div className="border-b border-chat-line bg-chat-surface px-4 py-3 sm:px-6">
+                    <p className="text-label font-semibold text-chat-ink">
                         {t('chat.thread.request.title', { name: heading.title })}
                     </p>
-                    <p className="mt-0.5 text-small text-muted">{t('chat.thread.request.body')}</p>
+                    <p className="mt-0.5 text-small text-chat-muted">{t('chat.thread.request.body')}</p>
                 </div>
             )}
 
             {messages.isError && messages.items.length === 0 ? (
                 <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
-                    <p role="alert" className="text-body text-ink-soft">
+                    <p role="alert" className="text-body text-chat-ink-soft">
                         {t('chat.thread.error')}
                     </p>
                     <button type="button" className={QUIET_BUTTON} onClick={messages.refetch}>
@@ -291,5 +287,21 @@ export function ChatThread({
                 />
             )}
         </section>
+    );
+}
+
+/**
+ * One conversation: its header, its messages, who is typing, and the composer.
+ *
+ * Holds the realtime connection while mounted and falls back to polling without it. Reports reading
+ * when the newest message is on screen and the page is visible, never merely because it was loaded.
+ *
+ * Drawn in the `ChatProvider` theme, when there is one.
+ */
+export function ChatThread(props: Readonly<ChatThreadProps>): React.JSX.Element {
+    return (
+        <ChatThemeScope>
+            <ChatThreadView {...props} />
+        </ChatThemeScope>
     );
 }

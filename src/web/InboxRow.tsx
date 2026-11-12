@@ -54,47 +54,54 @@ export function InboxRow({
                 onClick={onSelect}
                 aria-current={isSelected ? 'true' : undefined}
                 className={cn(
-                    'flex min-w-0 flex-1 items-center gap-3 rounded-card px-3 py-2.5 text-start transition-colors duration-fast',
-                    isSelected ? 'bg-accent-soft shadow-[inset_3px_0_0_var(--color-accent)]' : 'hover:bg-raised',
+                    'flex min-w-0 flex-1 items-center gap-3 rounded-chat-card px-3 py-2.5 text-start transition-colors duration-fast',
+                    isSelected
+                        ? 'bg-chat-accent-soft shadow-[inset_3px_0_0_var(--color-accent)]'
+                        : 'hover:bg-chat-raised',
                     FOCUS_RING,
                 )}
             >
                 <ChatAvatar name={heading.title} image={heading.avatar} />
                 <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <span className="flex min-w-0 items-baseline gap-2">
-                        <span className={cn('truncate text-body text-ink', isUnread ? 'font-semibold' : 'font-medium')}>
+                        <span
+                            className={cn(
+                                'truncate text-body text-chat-ink',
+                                isUnread ? 'font-semibold' : 'font-medium',
+                            )}
+                        >
                             {heading.title}
                         </span>
                         {heading.label !== null && (
-                            <span className="shrink-0 truncate text-caption text-muted">{heading.label}</span>
+                            <span className="shrink-0 truncate text-caption text-chat-muted">{heading.label}</span>
                         )}
                         <span
                             className={cn(
                                 'ms-auto shrink-0 text-caption tabular-nums',
-                                isUnread && !muted ? 'font-semibold text-accent' : 'text-faint',
+                                isUnread && !muted ? 'font-semibold text-chat-accent' : 'text-chat-faint',
                             )}
                         >
                             {time}
                         </span>
                     </span>
                     {heading.subtitle !== null && (
-                        <span className="truncate text-caption text-muted">{heading.subtitle}</span>
+                        <span className="truncate text-caption text-chat-muted">{heading.subtitle}</span>
                     )}
                     <span className="flex min-w-0 items-center gap-2">
                         {conversation.isRequest && (
-                            <span className="shrink-0 rounded-full bg-raised px-2 py-px text-2xs font-semibold text-ink-soft">
+                            <span className="shrink-0 rounded-full bg-chat-raised px-2 py-px text-2xs font-semibold text-chat-ink-soft">
                                 {t('chat.inbox.request')}
                             </span>
                         )}
                         <span
                             className={cn(
                                 'min-w-0 truncate text-small',
-                                isUnread ? 'font-medium text-ink-soft' : 'text-muted',
+                                isUnread ? 'font-medium text-chat-ink-soft' : 'text-chat-muted',
                             )}
                         >
                             {excerpt}
                         </span>
-                        <span className="ms-auto flex shrink-0 items-center gap-1.5 text-faint [@media(hover:hover)]:group-focus-within/row:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-0">
+                        <span className="ms-auto flex shrink-0 items-center gap-1.5 text-chat-faint [@media(hover:hover)]:group-focus-within/row:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-0">
                             {muted && (
                                 <span title={t('chat.inbox.muted')}>
                                     <MuteIcon className="h-4 w-4" />
@@ -111,7 +118,9 @@ export function InboxRow({
                                 <span
                                     className={cn(
                                         'inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-2xs font-semibold tabular-nums',
-                                        muted ? 'bg-line-strong text-ink-soft' : 'bg-accent text-accent-ink',
+                                        muted
+                                            ? 'bg-chat-line-strong text-chat-ink-soft'
+                                            : 'bg-chat-accent text-chat-accent-ink',
                                     )}
                                 >
                                     <span aria-hidden="true">{badge}</span>
@@ -131,7 +140,7 @@ export function InboxRow({
                     conversation={conversation}
                     label={t('chat.inbox.options', { title: heading.title })}
                     onGone={onGone}
-                    triggerClassName="h-8 w-8 bg-surface shadow-sm ring-1 ring-line"
+                    triggerClassName="h-8 w-8 bg-chat-surface shadow-sm ring-1 ring-chat-line"
                 />
             </div>
         </li>

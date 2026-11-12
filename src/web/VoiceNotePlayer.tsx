@@ -83,8 +83,8 @@ export function VoiceNotePlayer({ attachment, isOwn }: Readonly<VoiceNotePlayerP
                 className={cn(
                     'flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors duration-fast',
                     isOwn
-                        ? 'bg-accent text-accent-ink hover:bg-accent-hover'
-                        : 'bg-accent-soft text-accent hover:bg-accent-line',
+                        ? 'bg-chat-accent text-chat-accent-ink hover:bg-chat-accent-hover'
+                        : 'bg-chat-accent-soft text-chat-accent hover:bg-chat-accent-line',
                     FOCUS_RING,
                 )}
             >
@@ -100,7 +100,7 @@ export function VoiceNotePlayer({ attachment, isOwn }: Readonly<VoiceNotePlayerP
                                 style={{ height: `${Math.max(12, level)}%` }}
                                 className={cn(
                                     'w-[3px] flex-1 rounded-full transition-colors duration-fast',
-                                    index / BARS < progress ? 'bg-accent' : 'bg-line-strong',
+                                    index / BARS < progress ? 'bg-chat-accent' : 'bg-chat-line-strong',
                                 )}
                             />
                         ))}
@@ -121,7 +121,7 @@ export function VoiceNotePlayer({ attachment, isOwn }: Readonly<VoiceNotePlayerP
                         className={cn('absolute inset-0 h-full w-full cursor-pointer opacity-0', FOCUS_RING)}
                     />
                 </div>
-                <span className="text-2xs text-muted tabular-nums">
+                <span className="text-2xs text-chat-muted tabular-nums">
                     {formatDuration(isPlaying || position > 0 ? position : durationMs)}
                 </span>
             </div>

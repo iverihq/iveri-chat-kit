@@ -48,7 +48,7 @@ export function MessageAttachments({
                         onOpenPhoto(photos, 0);
                     }}
                     aria-label={t('chat.message.open-photo')}
-                    className={cn('block overflow-hidden rounded-[10px] bg-raised', FOCUS_RING)}
+                    className={cn('block overflow-hidden rounded-[10px] bg-chat-raised', FOCUS_RING)}
                     style={{
                         aspectRatio:
                             photos[0].width !== null && photos[0].height !== null
@@ -77,7 +77,7 @@ export function MessageAttachments({
                             }}
                             aria-label={t('chat.message.open-photo')}
                             className={cn(
-                                'relative aspect-square overflow-hidden rounded-[10px] bg-raised',
+                                'relative aspect-square overflow-hidden rounded-[10px] bg-chat-raised',
                                 FOCUS_RING,
                             )}
                         >
@@ -90,7 +90,7 @@ export function MessageAttachments({
                                 className="h-full w-full object-cover"
                             />
                             {index === shown.length - 1 && hidden > 0 && (
-                                <span className="absolute inset-0 flex items-center justify-center bg-ink/55 font-display text-h2 font-semibold text-white">
+                                <span className="absolute inset-0 flex items-center justify-center bg-chat-ink/55 font-chat-display text-h2 font-semibold text-white">
                                     +{hidden}
                                 </span>
                             )}
@@ -109,21 +109,21 @@ export function MessageAttachments({
                     className={cn(
                         'flex min-w-56 items-center gap-3 rounded-[10px] border px-3 py-2 transition-colors duration-fast',
                         isOwn
-                            ? 'border-accent-line bg-surface/70 hover:bg-surface'
-                            : 'border-line bg-canvas hover:bg-raised',
+                            ? 'border-chat-accent-line bg-chat-surface/70 hover:bg-chat-surface'
+                            : 'border-chat-line bg-chat-canvas hover:bg-chat-raised',
                         FOCUS_RING,
                     )}
                 >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-control bg-accent-soft text-accent">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-chat-control bg-chat-accent-soft text-chat-accent">
                         <FileIcon />
                     </span>
                     <span className="flex min-w-0 flex-1 flex-col">
-                        <span className="truncate text-label font-medium text-ink">{file.fileName}</span>
-                        <span className="text-caption text-muted tabular-nums">
+                        <span className="truncate text-label font-medium text-chat-ink">{file.fileName}</span>
+                        <span className="text-caption text-chat-muted tabular-nums">
                             {formatByteSize(file.sizeBytes, locale)}
                         </span>
                     </span>
-                    <DownloadIcon className="h-4.5 w-4.5 text-muted" />
+                    <DownloadIcon className="h-4.5 w-4.5 text-chat-muted" />
                 </a>
             ))}
             {voices.map((voice) => (

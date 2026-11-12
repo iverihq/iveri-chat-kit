@@ -165,7 +165,7 @@ export function MessageList({
         if (run.isSystem && first.type === 'message') {
             return (
                 <div key={run.key} className="flex justify-center px-6 py-1" data-seq={first.message.seq}>
-                    <p className="max-w-md rounded-control bg-sunken px-3 py-1.5 text-center text-small text-ink-soft">
+                    <p className="max-w-md rounded-chat-control bg-chat-sunken px-3 py-1.5 text-center text-small text-chat-ink-soft">
                         {systemNoticeText(first.message.systemKey ?? '', first.message.systemVariables, translate)}
                     </p>
                 </div>
@@ -192,7 +192,9 @@ export function MessageList({
                         run.isOwn ? 'items-end' : 'items-start',
                     )}
                 >
-                    {showSender && <span className="px-1 text-caption font-semibold text-ink-soft">{senderName}</span>}
+                    {showSender && (
+                        <span className="px-1 text-caption font-semibold text-chat-ink-soft">{senderName}</span>
+                    )}
                     {run.items.map((item, index) => (
                         <MessageBubble
                             key={item.key}
@@ -250,11 +252,13 @@ export function MessageList({
 
                 {items.length === 0 && !messages.isLoading && (
                     <div className="flex h-full flex-col items-center justify-center px-8 py-16 text-center">
-                        <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-accent-soft text-accent">
+                        <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-chat-accent-soft text-chat-accent">
                             <ChatBubblesIcon />
                         </span>
-                        <p className="font-display text-h3 font-semibold text-ink">{t('chat.thread.empty')}</p>
-                        <p className="mt-1 text-small text-muted">{t('chat.thread.empty-hint')}</p>
+                        <p className="font-chat-display text-h3 font-semibold text-chat-ink">
+                            {t('chat.thread.empty')}
+                        </p>
+                        <p className="mt-1 text-small text-chat-muted">{t('chat.thread.empty-hint')}</p>
                     </div>
                 )}
 
@@ -264,7 +268,7 @@ export function MessageList({
                     return (
                         <section key={section.day} aria-label={dayLabel} className="pb-2">
                             <div className="flex justify-center py-2">
-                                <span className="rounded-full border border-line bg-surface px-3 py-0.5 text-caption font-medium text-muted shadow-sm">
+                                <span className="rounded-full border border-chat-line bg-chat-surface px-3 py-0.5 text-caption font-medium text-chat-muted shadow-sm">
                                     {dayLabel}
                                 </span>
                             </div>
@@ -274,11 +278,11 @@ export function MessageList({
                                         {run.key === dividerKey && (
                                             <div
                                                 data-new-messages=""
-                                                className="flex items-center gap-3 px-2 text-caption font-semibold text-accent"
+                                                className="flex items-center gap-3 px-2 text-caption font-semibold text-chat-accent"
                                             >
-                                                <span className="h-px flex-1 bg-accent-line" />
+                                                <span className="h-px flex-1 bg-chat-accent-line" />
                                                 {t('chat.thread.new-messages')}
-                                                <span className="h-px flex-1 bg-accent-line" />
+                                                <span className="h-px flex-1 bg-chat-accent-line" />
                                             </div>
                                         )}
                                         {renderRun(run)}
@@ -299,7 +303,7 @@ export function MessageList({
                         if (node !== null) node.scrollTo({ top: node.scrollHeight, behavior: 'smooth' });
                     }}
                     className={cn(
-                        'absolute end-4 bottom-3 flex h-10 w-10 animate-fade-in items-center justify-center rounded-full border border-line bg-surface text-ink-soft shadow-md hover:bg-raised',
+                        'absolute end-4 bottom-3 flex h-10 w-10 animate-fade-in items-center justify-center rounded-full border border-chat-line bg-chat-surface text-chat-ink-soft shadow-md hover:bg-chat-raised',
                         FOCUS_RING,
                     )}
                 >

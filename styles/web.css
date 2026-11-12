@@ -8,6 +8,10 @@
  * The components are written in the fleet's semantic tokens (`bg-surface`, `text-ink`, `bg-accent`…),
  * never in colours of their own, so they wear whatever palette the app declares: a panel's navy, Ezo's
  * courtyard. That is why this file holds no colour at all.
+ *
+ * A customer's brand (`ChatProvider`'s `theme`) arrives as `--baasi-*` custom properties on the element
+ * around the chat. Each `chat-*` token below reads that property first and the app's own token second, so
+ * a key the theme leaves out, or no theme at all, draws exactly what the app's palette says.
  */
 
 /* The kit's built components are scanned wherever the package is installed. Relative to this file,
@@ -32,4 +36,37 @@
             transform: translateY(-3px);
         }
     }
+}
+
+/* `inline`, so a utility carries the whole `var()` chain and resolves it where it is used, beneath the
+ * element holding the theme's properties, rather than once at the root where none are set. */
+@theme inline {
+    --color-chat-accent: var(--baasi-color-accent, var(--color-accent));
+    --color-chat-accent-hover: var(--baasi-color-accent-hover, var(--color-accent-hover));
+    --color-chat-accent-ink: var(--baasi-color-accent-text, var(--color-accent-ink));
+    --color-chat-accent-soft: var(--baasi-color-accent-soft, var(--color-accent-soft));
+    --color-chat-accent-line: var(--baasi-color-accent-line, var(--color-accent-line));
+    --color-chat-link: var(--baasi-color-link, var(--color-link));
+    --color-chat-surface: var(--baasi-color-surface, var(--color-surface));
+    --color-chat-canvas: var(--baasi-color-canvas, var(--color-canvas));
+    --color-chat-raised: var(--baasi-color-raised, var(--color-raised));
+    --color-chat-sunken: var(--baasi-color-sunken, var(--color-sunken));
+    --color-chat-line: var(--baasi-color-line, var(--color-line));
+    --color-chat-line-strong: var(--baasi-color-line-strong, var(--color-line-strong));
+    --color-chat-ink: var(--baasi-color-text, var(--color-ink));
+    --color-chat-ink-soft: var(--baasi-color-text-soft, var(--color-ink-soft));
+    --color-chat-muted: var(--baasi-color-muted, var(--color-muted));
+    --color-chat-faint: var(--baasi-color-faint, var(--color-faint));
+    /* A bubble follows the accent and the surface unless the theme colours it on its own. */
+    --color-chat-bubble-own: var(--baasi-color-bubble-own, var(--baasi-color-accent-soft, var(--color-accent-soft)));
+    --color-chat-bubble-own-line: var(
+        --baasi-color-bubble-own-line,
+        var(--baasi-color-accent-line, var(--color-accent-line))
+    );
+    --color-chat-bubble-other: var(--baasi-color-bubble-other, var(--baasi-color-surface, var(--color-surface)));
+    --color-chat-bubble-other-line: var(--baasi-color-bubble-other-line, var(--baasi-color-line, var(--color-line)));
+    --radius-chat-control: var(--baasi-radius-control, var(--radius-control));
+    --radius-chat-card: var(--baasi-radius, var(--radius-card));
+    --radius-chat-panel: var(--baasi-radius-panel, var(--radius-panel));
+    --font-chat-display: var(--baasi-font-family, var(--font-display));
 }

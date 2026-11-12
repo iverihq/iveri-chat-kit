@@ -151,8 +151,8 @@ export function ChatComposer({
         const canAccept = canAcceptRequest(conversation);
 
         return (
-            <div className="flex flex-wrap items-center justify-center gap-3 border-t border-line bg-sunken px-4 py-4 text-center">
-                <p className="text-small text-ink-soft">{t(reason.key, reason.values)}</p>
+            <div className="flex flex-wrap items-center justify-center gap-3 border-t border-chat-line bg-chat-sunken px-4 py-4 text-center">
+                <p className="text-small text-chat-ink-soft">{t(reason.key, reason.values)}</p>
                 {canAccept && (
                     <button
                         type="button"
@@ -281,7 +281,7 @@ export function ChatComposer({
 
     if (recorder.status === 'recording') {
         return (
-            <div className="flex items-center gap-3 border-t border-line bg-surface px-3 py-3 sm:px-4">
+            <div className="flex items-center gap-3 border-t border-chat-line bg-chat-surface px-3 py-3 sm:px-4">
                 <button
                     type="button"
                     aria-label={t('chat.composer.cancel-recording')}
@@ -292,7 +292,7 @@ export function ChatComposer({
                 </button>
                 <div
                     role="status"
-                    className="flex min-w-0 flex-1 items-center gap-2.5 rounded-panel bg-critical-soft px-4 py-2.5"
+                    className="flex min-w-0 flex-1 items-center gap-2.5 rounded-chat-panel bg-critical-soft px-4 py-2.5"
                 >
                     <span
                         aria-hidden="true"
@@ -310,7 +310,7 @@ export function ChatComposer({
                         void sendVoice();
                     }}
                     className={cn(
-                        'flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-accent-ink shadow-sm hover:bg-accent-hover disabled:opacity-50',
+                        'flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-chat-accent text-chat-accent-ink shadow-sm hover:bg-chat-accent-hover disabled:opacity-50',
                         FOCUS_RING,
                     )}
                 >
@@ -322,24 +322,24 @@ export function ChatComposer({
 
     return (
         <div
-            className="border-t border-line bg-surface px-3 pt-2 pb-3 sm:px-4"
+            className="border-t border-chat-line bg-chat-surface px-3 pt-2 pb-3 sm:px-4"
             onDragOver={(event) => {
                 if (!isEditing) event.preventDefault();
             }}
             onDrop={onDrop}
         >
             {mode !== null && (
-                <div className="mb-2 flex items-center gap-3 rounded-control border-s-[3px] border-accent bg-accent-soft px-3 py-2">
-                    <span className="text-accent">{mode.type === 'reply' ? <ReplyIcon /> : <EditIcon />}</span>
+                <div className="mb-2 flex items-center gap-3 rounded-chat-control border-s-[3px] border-chat-accent bg-chat-accent-soft px-3 py-2">
+                    <span className="text-chat-accent">{mode.type === 'reply' ? <ReplyIcon /> : <EditIcon />}</span>
                     <span className="flex min-w-0 flex-1 flex-col">
-                        <span className="truncate text-caption font-semibold text-accent">
+                        <span className="truncate text-caption font-semibold text-chat-accent">
                             {mode.type === 'reply'
                                 ? t('chat.composer.replying-to', {
                                       name: mode.message.sender?.displayName ?? t('chat.common.you'),
                                   })
                                 : t('chat.composer.editing')}
                         </span>
-                        <span className="truncate text-small text-muted">
+                        <span className="truncate text-small text-chat-muted">
                             {replyExcerpt(toReplyPreview(mode.message), translate)}
                         </span>
                     </span>
@@ -364,17 +364,19 @@ export function ChatComposer({
                         <li
                             key={draft.localId}
                             className={cn(
-                                'relative flex h-16 shrink-0 items-center overflow-hidden rounded-card border bg-canvas',
+                                'relative flex h-16 shrink-0 items-center overflow-hidden rounded-chat-card border bg-chat-canvas',
                                 draft.previewUrl === null ? 'w-48 gap-2 px-2.5' : 'w-16',
-                                draft.status === 'failed' ? 'border-critical/60' : 'border-line',
+                                draft.status === 'failed' ? 'border-critical/60' : 'border-chat-line',
                             )}
                         >
                             {draft.previewUrl === null ? (
                                 <>
-                                    <FileIcon className="text-muted" />
+                                    <FileIcon className="text-chat-muted" />
                                     <span className="flex min-w-0 flex-1 flex-col">
-                                        <span className="truncate text-caption font-medium text-ink">{draft.name}</span>
-                                        <span className="text-2xs text-muted tabular-nums">
+                                        <span className="truncate text-caption font-medium text-chat-ink">
+                                            {draft.name}
+                                        </span>
+                                        <span className="text-2xs text-chat-muted tabular-nums">
                                             {formatByteSize(draft.sizeBytes, locale)}
                                         </span>
                                     </span>
@@ -389,10 +391,10 @@ export function ChatComposer({
                                     aria-valuemin={0}
                                     aria-valuemax={100}
                                     aria-valuenow={Math.round(draft.progress * 100)}
-                                    className="absolute inset-x-1.5 bottom-1.5 h-1 overflow-hidden rounded-full bg-ink/15"
+                                    className="absolute inset-x-1.5 bottom-1.5 h-1 overflow-hidden rounded-full bg-chat-ink/15"
                                 >
                                     <span
-                                        className="block h-full rounded-full bg-accent transition-[width] duration-fast"
+                                        className="block h-full rounded-full bg-chat-accent transition-[width] duration-fast"
                                         style={{ width: `${Math.max(6, draft.progress * 100)}%` }}
                                     />
                                 </span>
@@ -413,7 +415,7 @@ export function ChatComposer({
                                     drafts.remove(draft.localId);
                                 }}
                                 className={cn(
-                                    'absolute end-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-ink/60 text-white hover:bg-ink/80',
+                                    'absolute end-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-chat-ink/60 text-white hover:bg-chat-ink/80',
                                     FOCUS_RING,
                                 )}
                             >
@@ -456,7 +458,7 @@ export function ChatComposer({
                         ]}
                     />
                 )}
-                <div className="flex min-w-0 flex-1 items-end rounded-panel border border-line bg-canvas transition-colors duration-fast focus-within:border-accent focus-within:bg-surface hover:border-line-strong">
+                <div className="flex min-w-0 flex-1 items-end rounded-chat-panel border border-chat-line bg-chat-canvas transition-colors duration-fast focus-within:border-chat-accent focus-within:bg-chat-surface hover:border-chat-line-strong">
                     <textarea
                         ref={field}
                         rows={1}
@@ -472,7 +474,7 @@ export function ChatComposer({
                         }}
                         onKeyDown={onKeyDown}
                         onPaste={onPaste}
-                        className="block max-h-[200px] min-h-11 w-full resize-none bg-transparent [field-sizing:content] px-4 py-2.5 text-body text-ink outline-hidden placeholder:text-faint"
+                        className="block max-h-[200px] min-h-11 w-full resize-none bg-transparent [field-sizing:content] px-4 py-2.5 text-body text-chat-ink outline-hidden placeholder:text-chat-faint"
                     />
                 </div>
                 {canSubmit || isEditing || hasContent || !allowVoice ? (
@@ -484,7 +486,7 @@ export function ChatComposer({
                             void submit();
                         }}
                         className={cn(
-                            'flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-accent-ink shadow-sm transition-colors duration-fast hover:bg-accent-hover disabled:bg-accent/40 disabled:shadow-none',
+                            'flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-chat-accent text-chat-accent-ink shadow-sm transition-colors duration-fast hover:bg-chat-accent-hover disabled:bg-chat-accent/40 disabled:shadow-none',
                             FOCUS_RING,
                         )}
                     >
@@ -520,7 +522,10 @@ export function ChatComposer({
                 )}
                 {text.length > CHAT_MESSAGE_MAX_LENGTH * 0.9 && (
                     <span
-                        className={cn('ms-auto tabular-nums', isTooLong ? 'font-semibold text-critical' : 'text-muted')}
+                        className={cn(
+                            'ms-auto tabular-nums',
+                            isTooLong ? 'font-semibold text-critical' : 'text-chat-muted',
+                        )}
                     >
                         {isTooLong
                             ? t('chat.composer.too-long', { max: CHAT_MESSAGE_MAX_LENGTH })

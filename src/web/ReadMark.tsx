@@ -28,7 +28,7 @@ export function ReadMark({ state }: Readonly<{ state: ChatReadState }>): React.J
             title={label}
             className={cn(
                 'inline-flex items-center gap-0.5',
-                state.state === 'failed' ? 'text-critical' : isRead ? 'text-accent' : 'text-faint',
+                state.state === 'failed' ? 'text-critical' : isRead ? 'text-chat-accent' : 'text-chat-faint',
             )}
         >
             <svg viewBox="0 0 14 14" aria-hidden="true" focusable="false" className="h-3.5 w-3.5">
