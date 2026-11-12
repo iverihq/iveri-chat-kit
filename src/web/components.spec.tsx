@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+
 import { ChatAttachmentKind, ChatConversationKind, ChatMessageKind, ChatRefusal } from '@iveri/contracts/chat';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
@@ -5,7 +8,9 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 import { CONVERSATION, conversation, ME, message, ownMessage, participant } from '../testing/fixtures.js';
 import { createHarness } from '../testing/render.js';
+import type { ChatTheme } from '../theme/index.js';
 
+import { ChatDialog } from './ChatDialog.js';
 import { ChatInbox } from './ChatInbox.js';
 import { ChatThread } from './ChatThread.js';
 
@@ -300,5 +305,88 @@ describe('ChatInbox', () => {
         await userEvent.click(screen.getByRole('tab', { name: 'chat.inbox.tab.requests' }));
         expect(await screen.findByText('chat.inbox.empty.requests')).toBeInTheDocument();
         expect(screen.getByRole('tab', { name: 'chat.inbox.tab.requests' })).toHaveAttribute('aria-selected', 'true');
+    });
+});
+
+describe('a ChatProvider theme on the web', () => {
+    function brandedThread(theme: Partial<ChatTheme> | undefined): ReturnType<typeof createHarness> {
+        const harness = createHarness({ theme });
+        harness.stub.on('GET', `/conversations/${CONVERSATION}`, () => ({ body: conversation({ myLastReadSeq: 2 }) }));
+        harness.stub.on('GET', '/me', () => ({ body: { userId: ME, isNetwork: true } }));
+        harness.stub.on('GET', '/blocks', () => ({ body: [] }));
+        harness.stub.on('GET', `/conversations/${CONVERSATION}/messages`, () => ({
+            body: {
+                hasOlder: false,
+                lastSeq: 2,
+                messages: [message({ seq: 1, body: 'From them' }), ownMessage({ seq: 2, body: 'From me' })],
+            },
+        }));
+
+        return harness;
+    }
+
+    it('reaches every component through --baasi-* custom properties on the element around them', async () => {
+        const harness = brandedThread({
+            colorAccent: '#c2410c',
+            colorBubbleOwn: '#ffedd5',
+            radius: 18,
+            fontFamily: 'Georgia, serif',
+        });
+
+        render(<ChatThread conversationId={CONVERSATION} />, { wrapper: harness.wrapper });
+
+        const own = await screen.findByText('From me');
+        const scope = own.closest<HTMLElement>('[data-baasi-theme]');
+        expect(scope).not.toBeNull();
+        expect(scope?.style.getPropertyValue('--baasi-color-accent')).toBe('#c2410c');
+        expect(scope?.style.getPropertyValue('--baasi-color-bubble-own')).toBe('#ffedd5');
+        expect(scope?.style.getPropertyValue('--baasi-radius')).toBe('18px');
+        expect(scope?.style.display).toBe('contents');
+        expect(scope?.style.fontFamily).toBe('var(--baasi-font-family)');
+        // The bubbles read the theme's tokens, and nothing names a colour of its own.
+        expect(own.closest('[data-message-id]')?.querySelector('.bg-chat-bubble-own')).not.toBeNull();
+        expect(
+            screen.getByText('From them').closest('[data-message-id]')?.querySelector('.bg-chat-bubble-other'),
+        ).not.toBeNull();
+    });
+
+    it('carries the theme into a dialog, which a portal takes out from under the thread', () => {
+        const harness = brandedThread({ colorAccent: '#c2410c' });
+
+        render(
+            <ChatDialog title="Branded" onClose={() => undefined}>
+                body
+            </ChatDialog>,
+            { wrapper: harness.wrapper },
+        );
+
+        const dialog = screen.getByRole('dialog', { name: 'Branded' });
+        expect(dialog.closest<HTMLElement>('[data-baasi-theme]')?.style.getPropertyValue('--baasi-color-accent')).toBe(
+            '#c2410c',
+        );
+    });
+
+    it('renders today’s look untouched with no theme: no element, no property, the same tokens', async () => {
+        const harness = brandedThread(undefined);
+
+        const { container } = render(<ChatThread conversationId={CONVERSATION} />, { wrapper: harness.wrapper });
+
+        const own = await screen.findByText('From me');
+        expect(document.querySelector('[data-baasi-theme]')).toBeNull();
+        expect(container.innerHTML).not.toContain('--baasi-');
+        // The token falls back to the app's own `accent-soft`, the colour an own bubble has always had.
+        expect(own.closest('[data-message-id]')?.querySelector('.bg-chat-bubble-own')).not.toBeNull();
+    });
+
+    it('falls back to the app’s own token for every chat token the stylesheet declares', () => {
+        const stylesheet = readFileSync(path.resolve(process.cwd(), 'styles/web.css'), 'utf8');
+        const tokens = [...stylesheet.matchAll(/^\s*(--(?:color|radius|font)-chat-[\w-]+):\s*([^;]+);/gm)];
+
+        expect(tokens.length).toBeGreaterThan(15);
+        for (const [, name, value] of tokens) {
+            // Every chain ends in the app's own theme variable, never in a colour the kit chose.
+            expect(value, name).toMatch(/var\(--(?:color|radius|font)-(?!chat-)[\w-]+\)[\s)]*$/);
+            expect(value, name).not.toMatch(/#[0-9a-f]{3,6}/i);
+        }
     });
 });

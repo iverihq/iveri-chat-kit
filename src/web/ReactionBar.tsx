@@ -46,8 +46,8 @@ export function ReactionBar({
                     className={cn(
                         'inline-flex h-6 items-center gap-1 rounded-full border px-2 text-caption shadow-sm transition-colors duration-fast',
                         reaction.isMine
-                            ? 'border-accent-line bg-accent-soft font-semibold text-accent'
-                            : 'border-line bg-surface text-ink-soft hover:border-line-strong',
+                            ? 'border-chat-accent-line bg-chat-accent-soft font-semibold text-chat-accent'
+                            : 'border-chat-line bg-chat-surface text-chat-ink-soft hover:border-chat-line-strong',
                         'disabled:cursor-default',
                         FOCUS_RING,
                     )}

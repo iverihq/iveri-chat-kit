@@ -6,6 +6,7 @@ import { createChatClient, type ChatClient } from '../client/index.js';
 import type { ChatTranslate } from '../i18n/index.js';
 import { ChatProvider } from '../provider/index.js';
 import type { ChatSocketFactory } from '../realtime/index.js';
+import type { ChatTheme } from '../theme/index.js';
 
 import { createFetchStub } from './fetch-stub.js';
 import { keyTranslate, ME } from './fixtures.js';
@@ -27,6 +28,7 @@ export function createHarness(
         /** `'omit'` leaves the prop out, as a customer's app may; the default is `ME`. */
         currentUserId?: Maybe<UUID> | 'omit';
         realtimeTicket?: boolean;
+        theme?: Partial<ChatTheme>;
     } = {},
 ): TestHarness {
     const stub = createFetchStub();
@@ -49,6 +51,7 @@ export function createHarness(
                 timeZone="Asia/Tbilisi"
                 translate={options.translate ?? keyTranslate}
                 realtimeTicket={options.realtimeTicket}
+                theme={options.theme}
                 {...(options.currentUserId === 'omit' ? {} : { currentUserId: options.currentUserId ?? ME })}
             >
                 {children}

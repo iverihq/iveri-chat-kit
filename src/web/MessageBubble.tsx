@@ -63,7 +63,7 @@ export interface MessageBubbleProps {
 
 function MessageText({ text }: Readonly<{ text: string }>): React.JSX.Element {
     return (
-        <p className="text-body break-words whitespace-pre-wrap text-ink [overflow-wrap:anywhere]">
+        <p className="text-body break-words whitespace-pre-wrap text-chat-ink [overflow-wrap:anywhere]">
             {linkify(text).map((part, index) =>
                 part.type === 'link' ? (
                     <a
@@ -71,7 +71,7 @@ function MessageText({ text }: Readonly<{ text: string }>): React.JSX.Element {
                         href={part.href}
                         target="_blank"
                         rel="noopener noreferrer nofollow"
-                        className={cn('text-link underline underline-offset-2 hover:text-accent', FOCUS_RING)}
+                        className={cn('text-chat-link underline underline-offset-2 hover:text-chat-accent', FOCUS_RING)}
                     >
                         {part.text}
                     </a>
@@ -100,13 +100,18 @@ function ReplyQuote({
             }}
             aria-label={t('chat.message.reply-quote', { name })}
             className={cn(
-                'mb-1.5 flex w-full min-w-40 flex-col rounded-control border-s-[3px] border-accent px-2.5 py-1.5 text-start transition-colors duration-fast',
-                isOwn ? 'bg-surface/70 hover:bg-surface' : 'bg-canvas hover:bg-raised',
+                'mb-1.5 flex w-full min-w-40 flex-col rounded-chat-control border-s-[3px] border-chat-accent px-2.5 py-1.5 text-start transition-colors duration-fast',
+                isOwn ? 'bg-chat-surface/70 hover:bg-chat-surface' : 'bg-chat-canvas hover:bg-chat-raised',
                 FOCUS_RING,
             )}
         >
-            <span className="truncate text-caption font-semibold text-accent">{name}</span>
-            <span className={cn('line-clamp-2 text-small', reply.isDeleted ? 'text-faint italic' : 'text-muted')}>
+            <span className="truncate text-caption font-semibold text-chat-accent">{name}</span>
+            <span
+                className={cn(
+                    'line-clamp-2 text-small',
+                    reply.isDeleted ? 'text-chat-faint italic' : 'text-chat-muted',
+                )}
+            >
                 {replyExcerpt(reply, translate)}
             </span>
         </button>
@@ -179,8 +184,8 @@ export function MessageBubble({
             className={cn(
                 'flex items-center justify-end gap-1.5 text-2xs tabular-nums',
                 isPhotoOnly
-                    ? 'absolute end-2 bottom-2 rounded-full bg-ink/55 px-2 py-0.5 text-white'
-                    : 'mt-0.5 text-faint',
+                    ? 'absolute end-2 bottom-2 rounded-full bg-chat-ink/55 px-2 py-0.5 text-white'
+                    : 'mt-0.5 text-chat-faint',
             )}
         >
             {message?.editedAt !== null && message?.editedAt !== undefined && !isDeleted && (
@@ -215,21 +220,21 @@ export function MessageBubble({
         >
             <div
                 className={cn(
-                    'relative max-w-full rounded-card border transition-shadow duration-normal',
+                    'relative max-w-full rounded-chat-card border transition-shadow duration-normal',
                     isPhotoOnly ? 'p-1' : 'px-3.5 pt-2 pb-1.5',
                     isDeleted
-                        ? 'border-dashed border-line-strong bg-transparent'
+                        ? 'border-dashed border-chat-line-strong bg-transparent'
                         : isOwn
-                          ? 'border-accent-line bg-accent-soft'
-                          : 'border-line bg-surface shadow-sm',
+                          ? 'border-chat-bubble-own-line bg-chat-bubble-own'
+                          : 'border-chat-bubble-other-line bg-chat-bubble-other shadow-sm',
                     pending?.status === 'sending' && 'opacity-75',
                     pending?.status === 'failed' && 'border-critical/50',
                     (isOwn ? OWN_CORNERS : OTHER_CORNERS)[position],
-                    isHighlighted && 'ring-2 ring-accent ring-offset-2 ring-offset-canvas',
+                    isHighlighted && 'ring-2 ring-chat-accent ring-offset-2 ring-offset-chat-canvas',
                 )}
             >
                 {isDeleted ? (
-                    <p className="flex items-center gap-1.5 text-small text-muted italic">
+                    <p className="flex items-center gap-1.5 text-small text-chat-muted italic">
                         <BlockIcon className="h-4 w-4" />
                         {t('chat.message.deleted')}
                     </p>
@@ -275,7 +280,7 @@ export function MessageBubble({
                         onClick={() => {
                             onRetry(pending.clientMessageId);
                         }}
-                        className={cn('font-semibold text-link hover:underline', FOCUS_RING)}
+                        className={cn('font-semibold text-chat-link hover:underline', FOCUS_RING)}
                     >
                         {t('chat.common.retry')}
                     </button>
@@ -284,7 +289,7 @@ export function MessageBubble({
                         onClick={() => {
                             onDiscard(pending.clientMessageId);
                         }}
-                        className={cn('font-medium text-muted hover:text-ink', FOCUS_RING)}
+                        className={cn('font-medium text-chat-muted hover:text-chat-ink', FOCUS_RING)}
                     >
                         {t('chat.message.discard')}
                     </button>

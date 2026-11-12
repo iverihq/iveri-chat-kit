@@ -1,15 +1,26 @@
 import { color, radius } from '@iveri/tokens';
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useMemo } from 'react';
 
 import type { ChatUploadFile } from '../client/index.js';
+import { ChatContext } from '../provider/chat-context.js';
+
+import { applyChatTheme } from './native-theme.js';
 
 /** The colours and radii the native components draw with. The app's palette, or the fleet's by default. */
 export interface ChatNativeTheme {
     color: { [Key in keyof typeof color]: string };
     radius: { [Key in keyof typeof radius]: number };
+    /** The two kinds of message bubble, which a `ChatProvider` theme can colour apart from the accent. */
+    bubble: { own: string; ownLine: string; other: string; otherLine: string };
+    /** A `ChatProvider` theme's face, used where the app's `resolveFontFamily` picks none. */
+    fontFamily?: string;
 }
 
-export const DEFAULT_CHAT_NATIVE_THEME: ChatNativeTheme = { color, radius };
+export const DEFAULT_CHAT_NATIVE_THEME: ChatNativeTheme = {
+    color,
+    radius,
+    bubble: { own: color.accentSoft, ownLine: color.accentLine, other: color.surface, otherLine: color.line },
+};
 
 export type ChatTextWeight = '400' | '500' | '600' | '700';
 
@@ -80,8 +91,21 @@ export const ChatNativeContext = createContext<ChatNativeContextValue>({
     capabilities: {},
 });
 
+/**
+ * The native look and capabilities, with the `ChatProvider` theme (when there is one) laid over the
+ * `ChatNativeProvider` palette, so one brand object reaches the web and the phone alike.
+ */
 export function useChatNative(): ChatNativeContextValue {
-    return useContext(ChatNativeContext);
+    const native = useContext(ChatNativeContext);
+    const chatTheme = useContext(ChatContext)?.theme;
+
+    return useMemo(
+        () =>
+            chatTheme === undefined || Object.keys(chatTheme).length === 0
+                ? native
+                : { ...native, theme: applyChatTheme(native.theme, chatTheme) },
+        [native, chatTheme],
+    );
 }
 
 /**

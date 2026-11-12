@@ -116,7 +116,7 @@ export function MessageActions({
     return (
         <div
             className={cn(
-                'flex items-center gap-0.5 rounded-full border border-line bg-surface p-0.5 shadow-md',
+                'flex items-center gap-0.5 rounded-full border border-chat-line bg-chat-surface p-0.5 shadow-md',
                 className,
             )}
         >
@@ -143,7 +143,7 @@ export function MessageActions({
                             // Anchored on the side where the thread has room: a picker centred on the button was
                             // cut off by the thread's edge on somebody else's message.
                             className={cn(
-                                'absolute bottom-full z-40 mb-2 flex animate-scale-in gap-0.5 rounded-full border border-line bg-surface p-1 shadow-lg',
+                                'absolute bottom-full z-40 mb-2 flex animate-scale-in gap-0.5 rounded-full border border-chat-line bg-chat-surface p-1 shadow-lg',
                                 message.isOwn ? 'end-0' : 'start-0',
                             )}
                         >
@@ -158,8 +158,8 @@ export function MessageActions({
                                         onReact(mine === emoji ? null : emoji);
                                     }}
                                     className={cn(
-                                        'flex h-9 w-9 items-center justify-center rounded-full text-[1.25rem] transition-transform duration-fast hover:scale-110 hover:bg-raised',
-                                        mine === emoji && 'bg-accent-soft',
+                                        'flex h-9 w-9 items-center justify-center rounded-full text-[1.25rem] transition-transform duration-fast hover:scale-110 hover:bg-chat-raised',
+                                        mine === emoji && 'bg-chat-accent-soft',
                                         FOCUS_RING,
                                     )}
                                 >

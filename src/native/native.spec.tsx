@@ -6,11 +6,13 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { CONVERSATION, conversation, keyTranslate, message, ownMessage } from '../testing/fixtures.js';
 import { createHarness } from '../testing/render.js';
+import { defaultChatTheme } from '../theme/index.js';
 import { shouldPinToNewest } from '../util/index.js';
 
 import { ChatNativeProvider } from './ChatNativeProvider.js';
 import { ChatThreadScreen } from './ChatThreadScreen.js';
-import { toUploadFile } from './native-context.js';
+import { DEFAULT_CHAT_NATIVE_THEME, toUploadFile, useChatNative, type ChatNativeTheme } from './native-context.js';
+import { applyChatTheme } from './native-theme.js';
 
 // React Native cannot run in a test runner (its entry point is Flow), so this project renders the same
 // components through `react-native-web`. It proves they mount and draw the right things; the gestures,
@@ -173,3 +175,76 @@ describe('toUploadFile', () => {
         expect((fetched as Blob).type).toBe('image/jpeg');
     });
 });
+
+describe('a ChatProvider theme on a phone', () => {
+    function ThemeProbe({ onTheme }: Readonly<{ onTheme: (theme: ChatNativeTheme) => void }>): null {
+        onTheme(useChatNative().theme);
+
+        return null;
+    }
+
+    it('flows through context into the native palette, the bubbles and the face', () => {
+        const harness = createHarness({
+            theme: { colorAccent: '#c2410c', colorBubbleOwn: '#ffedd5', radius: 18, fontFamily: 'Georgia' },
+        });
+        let seen: ChatNativeTheme | null = null;
+
+        render(
+            <ThemeProbe
+                onTheme={(theme) => {
+                    seen = theme;
+                }}
+            />,
+            { wrapper: harness.wrapper },
+        );
+
+        const theme = seen as unknown as ChatNativeTheme;
+        expect(theme.color.accent).toBe('#c2410c');
+        // Mixed as hex, because React Native has no `color-mix()`.
+        expect(theme.color.accentSoft).toMatch(/^#[0-9a-f]{6}$/);
+        expect(theme.color.link).toBe('#c2410c');
+        expect(theme.bubble.own).toBe('#ffedd5');
+        expect(theme.radius).toEqual({ control: 12, card: 18, panel: 24 });
+        expect(theme.fontFamily).toBe('Georgia');
+        // What the theme left out is the fleet's palette, untouched.
+        expect(theme.color.surface).toBe(DEFAULT_CHAT_NATIVE_THEME.color.surface);
+        expect(theme.bubble.other).toBe(DEFAULT_CHAT_NATIVE_THEME.bubble.other);
+    });
+
+    it('draws an own bubble in the theme’s colour', async () => {
+        const harness = createHarness({ theme: { colorBubbleOwn: '#ffedd5' } });
+        harness.stub.on('GET', `/conversations/${CONVERSATION}`, () => ({ body: conversation() }));
+        harness.stub.on('GET', `/conversations/${CONVERSATION}/messages`, () => ({
+            body: { hasOlder: false, lastSeq: 1, messages: [ownMessage({ seq: 1, body: 'Branded' })] },
+        }));
+
+        render(<ChatThreadScreen conversationId={CONVERSATION} />, { wrapper: harness.wrapper });
+
+        const text = await screen.findByText('Branded');
+        const painted = [...ancestors(text)].map((element) => getComputedStyle(element).backgroundColor);
+        expect(painted).toContain('rgb(255, 237, 213)');
+    });
+
+    it('is today’s look for no theme and for defaultChatTheme alike', () => {
+        expect(applyChatTheme(DEFAULT_CHAT_NATIVE_THEME, defaultChatTheme)).toEqual({
+            ...DEFAULT_CHAT_NATIVE_THEME,
+            fontFamily: undefined,
+        });
+
+        const harness = createHarness();
+        let seen: ChatNativeTheme | null = null;
+        render(
+            <ThemeProbe
+                onTheme={(theme) => {
+                    seen = theme;
+                }}
+            />,
+            { wrapper: harness.wrapper },
+        );
+        expect(seen).toBe(DEFAULT_CHAT_NATIVE_THEME);
+    });
+});
+
+function* ancestors(element: Element): Generator<Element> {
+    for (let current: Element | null = element; current !== null; current = current.parentElement) yield current;
+}

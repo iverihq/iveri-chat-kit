@@ -14,6 +14,7 @@ import {
     recoverAfterConnect,
     type ChatSocketFactory,
 } from '../realtime/index.js';
+import type { ChatTheme } from '../theme/index.js';
 
 import { ChatContext, type ChatContextValue } from './chat-context.js';
 import { ChatPendingStore } from './pending-store.js';
@@ -42,6 +43,12 @@ export interface ChatProviderProps {
      * app's own user id and the app need not compute it.
      */
     currentUserId?: Maybe<UUID>;
+    /**
+     * A brand to draw in, for a customer whose chat should look like its own product. Only the keys given
+     * change anything: on the web they become `--baasi-*` custom properties the components read before the
+     * app's own tokens, on React Native they replace the matching colours. Left out, today's look.
+     */
+    theme?: Partial<ChatTheme>;
     /** For specs and the gallery: stands in for `socket.io-client`. */
     socketFactory?: ChatSocketFactory;
     children?: ReactNode;
@@ -62,6 +69,7 @@ export function ChatProvider({
     timeZone,
     translate,
     currentUserId: givenUserId,
+    theme: givenTheme,
     socketFactory,
     children,
 }: Readonly<ChatProviderProps>): React.JSX.Element {
@@ -111,9 +119,14 @@ export function ChatProvider({
         [typing],
     );
 
+    // A theme is usually written inline, so a new object each render. Keyed on its content, the context
+    // only changes, and the chat only redraws, when the brand does.
+    const themeKey = JSON.stringify(givenTheme ?? {});
+    const theme = useMemo<Partial<ChatTheme>>(() => JSON.parse(themeKey) as Partial<ChatTheme>, [themeKey]);
+
     const value = useMemo<ChatContextValue>(
-        () => ({ client, locale, timeZone, translate, currentUserId, realtime, typing, pending, readMarks }),
-        [client, locale, timeZone, translate, currentUserId, realtime, typing, pending, readMarks],
+        () => ({ client, locale, timeZone, translate, currentUserId, realtime, typing, pending, readMarks, theme }),
+        [client, locale, timeZone, translate, currentUserId, realtime, typing, pending, readMarks, theme],
     );
 
     return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

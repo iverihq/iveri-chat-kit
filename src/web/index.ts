@@ -3,6 +3,7 @@ export * from './ChatComposer.js';
 export * from './ChatDialog.js';
 export * from './ChatInbox.js';
 export * from './ChatMenu.js';
+export * from './ChatThemeScope.js';
 export * from './ChatThread.js';
 export * from './ConfirmDialog.js';
 export * from './ConversationMenu.js';

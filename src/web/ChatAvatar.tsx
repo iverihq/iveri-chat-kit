@@ -30,7 +30,7 @@ export interface ChatAvatarProps {
 export function ChatAvatar({ name, image, size = 'md', className }: Readonly<ChatAvatarProps>): React.JSX.Element {
     const shell = cn(
         'inline-flex shrink-0 select-none items-center justify-center overflow-hidden rounded-full',
-        'ring-1 ring-inset ring-accent-line',
+        'ring-1 ring-inset ring-chat-accent-line',
         SIZE_CLASS[size],
         className,
     );
@@ -42,7 +42,7 @@ export function ChatAvatar({ name, image, size = 'md', className }: Readonly<Cha
                 alt={name}
                 loading="lazy"
                 decoding="async"
-                className={cn(shell, 'bg-raised object-cover')}
+                className={cn(shell, 'bg-chat-raised object-cover')}
             />
         );
     }
@@ -52,7 +52,7 @@ export function ChatAvatar({ name, image, size = 'md', className }: Readonly<Cha
             role="img"
             aria-label={name}
             title={name}
-            className={cn(shell, 'bg-accent-soft font-semibold text-accent')}
+            className={cn(shell, 'bg-chat-accent-soft font-semibold text-chat-accent')}
         >
             {initialsOf(name)}
         </span>

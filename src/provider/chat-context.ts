@@ -4,6 +4,7 @@ import { createContext, useContext } from 'react';
 import type { ChatClient } from '../client/index.js';
 import type { ChatTranslate } from '../i18n/index.js';
 import type { ChatRealtimeConnection, ChatTypingStore } from '../realtime/index.js';
+import type { ChatTheme } from '../theme/index.js';
 
 import type { ChatPendingStore } from './pending-store.js';
 
@@ -22,6 +23,8 @@ export interface ChatContextValue {
     pending: ChatPendingStore;
     /** The highest `seq` this tab has already told `chat-api` it read, per conversation. */
     readMarks: Map<UUID, number>;
+    /** The keys of a brand the app named; empty for today's look. Both platforms read it. */
+    theme: Partial<ChatTheme>;
 }
 
 /**

@@ -32,7 +32,9 @@ export function ChatText({
 }: Readonly<TextProps & { children?: ReactNode }>): React.JSX.Element {
     const { resolveFontFamily, theme } = useChatNative();
     const flattened = StyleSheet.flatten(style) as TextStyle | undefined;
-    const fontFamily = resolveFontFamily?.(textOf(children), weightOf(flattened?.fontWeight));
+    // The app's per-script rule first, because a theme's single face may lack the script; the theme's face
+    // where the rule picks none.
+    const fontFamily = resolveFontFamily?.(textOf(children), weightOf(flattened?.fontWeight)) ?? theme.fontFamily;
 
     return (
         <Text

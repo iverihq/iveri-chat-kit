@@ -49,8 +49,9 @@ On the web, import the stylesheet after the app's theme:
 @import '@iveri/chat-kit/web.css';
 ```
 
-The components use only the fleet's semantic tokens (`bg-surface`, `text-ink`, `bg-accent`, …), so they wear the
-app's palette: Ezo's courtyard colours apply with no Ezo code here.
+The components draw with `chat-*` tokens (`bg-chat-surface`, `text-chat-ink`, `bg-chat-accent`, …), each of which
+reads a theme's property first and the fleet's semantic token second, so with no theme they wear the app's palette:
+Ezo's courtyard colours apply with no Ezo code here.
 
 `ChatInbox` and `ChatThread` are separate so a desktop page can show both side by side and a phone one at a time
 (`onBack` puts a back button in the thread's header).
@@ -91,6 +92,49 @@ const chatClient = createChatClient({
   so the kit reads it from `GET /me` (`userId`) rather than asking the app to compute it. Until that answers, nothing is
   drawn as the reader's own.
 - `client.createRealtimeTicket()` is the same exchange, for an app that opens its own socket.
+
+## Theming
+
+A customer's chat should look like the customer's product, not like Iveri's. `ChatProvider` takes a `theme`, one
+object for the web and the phone alike, and **only the keys it names change anything**:
+
+```tsx
+import { ChatProvider, type ChatTheme } from '@iveri/chat-kit';
+
+const brand: Partial<ChatTheme> = {
+    colorAccent: '#c2410c', // buttons, links, the read mark, the selected row, the focus ring
+    colorAccentText: '#ffffff', // text on the accent
+    colorSurface: '#fffaf5', // panels and the composer; the canvas, hovers and hairlines are mixed from it
+    colorText: '#1c1917',
+    colorMuted: '#78716c', // times, hints, previews
+    colorBubbleOwn: '#ffedd5', // the reader's own messages (defaults to a wash of the accent)
+    colorBubbleOther: '#ffffff', // everybody else's (defaults to the surface)
+    radius: 18, // a bubble's and a card's corners, in pixels; controls and sheets follow
+    fontFamily: "'Source Sans 3', sans-serif",
+};
+
+<ChatProvider client={chatClient} locale={locale} translate={t} theme={brand}>
+    …
+</ChatProvider>;
+```
+
+| Key            | Web                                                                                                              | React Native                                                         |
+| -------------- | ---------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| How it arrives | `--baasi-*` custom properties on a `display: contents` element around `ChatInbox`, `ChatThread` and every dialog | The native palette through context, laid over `ChatNativeProvider`'s |
+| A key left out | The app's own Tailwind token, untouched                                                                          | The fleet's palette (or `ChatNativeProvider`'s)                      |
+| Derived shades | `color-mix()` in the browser                                                                                     | Mixed as hex; a colour that is not hex stands in for its own shades  |
+| `fontFamily`   | A font stack, on everything the kit draws                                                                        | One loaded face, used only where `resolveFontFamily` picks none      |
+
+- **Give colours both platforms accept**: hex or `rgb()`. A `var(--x)` or `oklch()` is fine on the web and an invalid
+  colour on a phone.
+- **`defaultChatTheme` is today's look**: the fleet's palette, with the fleet's own shades rather than mixed ones, and
+  an empty `fontFamily` meaning the app's own. Passing no theme and passing `defaultChatTheme` draw the same in an app
+  on the fleet's palette, which is why Iveri's own products pass nothing.
+- **A kit component mounted on its own** (a `ChatComposer` outside a `ChatThread`, say) sits in no theme element; wrap
+  it in `<ChatThemeScope>` from `@iveri/chat-kit/web`. `chatThemeVariables(theme)` returns the same properties for an
+  element of the app's own.
+- Status colours (an error, a warning) and the scrim behind a dialog are not themable: they mean the same thing in
+  every product.
 
 ## Strings
 

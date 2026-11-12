@@ -228,8 +228,8 @@ export function MessageBubble({
                     isDeleted
                         ? { borderColor: theme.color.lineStrong, borderStyle: 'dashed', backgroundColor: 'transparent' }
                         : isOwn
-                          ? { backgroundColor: theme.color.accentSoft, borderColor: theme.color.accentLine }
-                          : { backgroundColor: theme.color.surface, borderColor: theme.color.line },
+                          ? { backgroundColor: theme.bubble.own, borderColor: theme.bubble.ownLine }
+                          : { backgroundColor: theme.bubble.other, borderColor: theme.bubble.otherLine },
                     pending?.status === 'sending' && { opacity: 0.75 },
                     pending?.status === 'failed' && { borderColor: theme.color.critical },
                 ]}

@@ -61,7 +61,7 @@ export function Lightbox({ photos, startIndex, senderName, onClose }: Readonly<L
                         key={photo.id}
                         src={photo.url}
                         alt={t('chat.message.photo', { name: senderName })}
-                        className="max-h-[78dvh] max-w-full animate-fade-in rounded-control object-contain"
+                        className="max-h-[78dvh] max-w-full animate-fade-in rounded-chat-control object-contain"
                     />
                     <figcaption className="flex items-center gap-3 text-small text-white/80">
                         <a

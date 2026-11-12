@@ -64,7 +64,7 @@ export function ConfirmDialog({
                 </>
             }
         >
-            <p className="text-body text-ink-soft">{body}</p>
+            <p className="text-body text-chat-ink-soft">{body}</p>
             {error !== null && (
                 <p role="alert" className="mt-3 text-small text-critical">
                     {describeError(error, translate)}
