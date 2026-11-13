@@ -71,16 +71,13 @@ const chatClient = createChatClient({
     onUnauthorized: () => chatTokenStore.refreshFromOwnServer(),
 });
 
-<ChatProvider
-    client={chatClient}
-    realtimeUrl="https://chat-realtime.example"
-    realtimeTicket
-    locale={locale}
-    translate={t}
->
+<ChatProvider client={chatClient} realtimeUrl="https://chat-realtime.example" realtimeTicket locale={locale}>
     …
 </ChatProvider>;
 ```
+
+- **No `translate` is needed.** The kit carries its own words in English, Russian and Georgian and formats them in
+  `locale`; see [Strings](#strings) for changing a wording, adding a language, or wording the app's own notices.
 
 - **`realtimeTicket`** (default off) makes the socket present a **ticket** instead of the token. Before every
   connection attempt, the first and each reconnect, the kit calls `chat-api`'s `POST /realtime/ticket` with the current
@@ -113,7 +110,7 @@ const brand: Partial<ChatTheme> = {
     fontFamily: "'Source Sans 3', sans-serif",
 };
 
-<ChatProvider client={chatClient} locale={locale} translate={t} theme={brand}>
+<ChatProvider client={chatClient} locale={locale} theme={brand}>
     …
 </ChatProvider>;
 ```
@@ -139,10 +136,69 @@ const brand: Partial<ChatTheme> = {
 ## Strings
 
 Every string is a key in the **`chat-kit` namespace** (`iveri-infra/scripts/i18n/chat-kit.mjs`), all starting with
-`chat.`. An app adds `chat-kit` to its own row in `APP_NAMESPACES` and pulls it with its others. Its `catalog.spec.ts`
-should assert the pulled catalogue holds every key in `CHAT_KIT_MESSAGE_KEYS` (the kit renders from `node_modules`,
-where the app's own source scan never reaches) and that no value contains a stem in `CHAT_KIT_FORBIDDEN_WORDS`:
-Baasi's messages are not end-to-end encrypted, so nothing may call them encrypted, secure or private.
+`chat.`, and **the package carries the published namespace** in English, Russian and Georgian
+(`CHAT_KIT_DEFAULT_CATALOGUE`). How an app reaches the words depends on whether it has a catalogue of its own:
+
+| The app                                                  | It passes                | The words                                                              |
+| -------------------------------------------------------- | ------------------------ | ---------------------------------------------------------------------- |
+| A customer's, signed in through Baasi with an app secret | nothing, or `messages`   | The kit's own, in `locale`, with the app's `messages` read first       |
+| Iveri's own (chat-web, chat-app, HR, Taxi, Ezo)          | `translate`, its own `t` | Its pulled catalogue, which holds `chat-kit` beside its own namespaces |
+
+A given `translate` is used for every word and `messages` is then not read. Without one, a key is looked up in
+`messages` and then in the kit's words, first in `locale` (`ka-GE`), then its language (`ka`), then English, and is
+**formatted with the plural rules of the locale that supplied it**: English shown to a Georgian reader is still English.
+
+```tsx
+<ChatProvider
+    client={chatClient}
+    locale="ka"
+    messages={{
+        // Another wording for one of the kit's keys, in one language; the others keep the kit's.
+        en: { 'chat.composer.placeholder': 'Message the shop' },
+        // A language the kit does not carry: every key it lacks falls back to English.
+        de: { 'chat.composer.send': 'Senden' },
+    }}
+>
+```
+
+### The app's own notices
+
+`POST /server/conversations/:id/notices` takes a **key and variables, never text**, so each reader sees a notice in
+their own language. A key the kit does not have (anything outside `chat.*`) is the app's to word, in `messages`, as an
+ICU pattern over the variables it posts:
+
+```ts
+// The app's server
+await baasi.post(`/server/conversations/${conversationId}/notices`, {
+    key: 'acme.order.shipped',
+    variables: { order: 'A-17' },
+    idempotencyKey,
+});
+```
+
+```tsx
+// The app
+<ChatProvider
+    client={chatClient}
+    locale={locale}
+    messages={{
+        en: { 'acme.order.shipped': 'Order {order} is on its way' },
+        ka: { 'acme.order.shipped': 'შეკვეთა {order} გზაშია' },
+    }}
+>
+```
+
+Give the app's keys **its own prefix** (`acme.`), never `chat.`, which belongs to the kit and may gain a key of the same
+name. A key nobody worded, in any language, is drawn as the neutral "Something changed in this conversation" (`chat.system.unknown`)
+rather than as the key; so is a notice whose variables did not arrive.
+
+### In Iveri's own apps
+
+An app adds `chat-kit` to its own row in `APP_NAMESPACES`, pulls it with its others and passes its `t`. Its
+`catalog.spec.ts` should assert the pulled catalogue holds every key in `CHAT_KIT_MESSAGE_KEYS` (the kit renders from
+`node_modules`, where the app's own source scan never reaches) and that no value contains a stem in
+`CHAT_KIT_FORBIDDEN_WORDS`: Baasi's messages are not end-to-end encrypted, so nothing may call them encrypted, secure
+or private. The kit's own spec asserts the same of the words it carries.
 
 ## Embedding in a product
 
@@ -205,6 +261,13 @@ Georgian needs Noto.
 pnpm build        # tsc, then scripts/verify-package.mjs
 pnpm test         # Vitest: jsdom for the client, hooks and web components; react-native-web for the native ones
 pnpm preview      # the gallery on :5191, reading the strings from ../iveri-infra (or IVERI_INFRA_DIR)
+```
+
+**Before a release, pull the published namespace into the package** with the local stack running, and commit the
+result if it changed. CI cannot reach the localization service, so this is the one step that cannot run there:
+
+```sh
+IDENTITY_API_URL=http://localhost:<identity port> node scripts/pull-catalogue.mjs
 ```
 
 Released by tag: `git tag -a vX.Y.Z -m vX.Y.Z && git push origin vX.Y.Z`, one tag at a time, never `--follow-tags`.

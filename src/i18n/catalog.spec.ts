@@ -3,8 +3,10 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+import { IntlMessageFormat } from 'intl-messageformat';
 import { describe, expect, it } from 'vitest';
 
+import { CHAT_KIT_DEFAULT_CATALOGUE } from './default-catalogue.js';
 import { CHAT_KIT_FORBIDDEN_WORDS, findForbiddenWords } from './forbidden-words.js';
 import {
     CHAT_ACCOUNT_MESSAGE_KEYS,
@@ -68,6 +70,38 @@ describe('CHAT_KIT_MESSAGE_KEYS', () => {
 
     it('has no key twice', () => {
         expect(new Set(CHAT_KIT_MESSAGE_KEYS).size).toBe(CHAT_KIT_MESSAGE_KEYS.length);
+    });
+});
+
+/**
+ * The words the package carries for an app with no catalogue of its own, a customer's above all. **This runs in
+ * CI**, unlike the namespace check below: a key a component writes and the bundled catalogue lacks would put the
+ * key on a customer's screen, and nothing in their app could notice it.
+ */
+describe('CHAT_KIT_DEFAULT_CATALOGUE', () => {
+    const { messages } = CHAT_KIT_DEFAULT_CATALOGUE;
+
+    it('carries English, Russian and Georgian, from the chat-kit namespace', () => {
+        expect(CHAT_KIT_DEFAULT_CATALOGUE.namespace).toBe('chat-kit');
+        expect(CHAT_KIT_DEFAULT_CATALOGUE.sourceLocale).toBe('en');
+        expect(Object.keys(messages).sort()).toEqual(['en', 'ka', 'ru']);
+    });
+
+    it.each(['en', 'ru', 'ka'])('has every key the kit can render, and only those, in %s', (locale) => {
+        const carried = Object.keys(messages[locale] ?? {});
+        expect([...literalKeys()].filter((key) => !carried.includes(key))).toEqual([]);
+        expect(CHAT_KIT_MESSAGE_KEYS.filter((key) => !carried.includes(key))).toEqual([]);
+        expect(carried.filter((key) => !(CHAT_KIT_MESSAGE_KEYS as readonly string[]).includes(key))).toEqual([]);
+    });
+
+    it('holds only patterns that format, and none that calls a conversation encrypted', () => {
+        for (const [locale, entries] of Object.entries(messages)) {
+            for (const [key, value = ''] of Object.entries(entries ?? {})) {
+                expect(value, `${locale} ${key}`).not.toBe('');
+                expect(() => new IntlMessageFormat(value, locale), `${locale} ${key}`).not.toThrow();
+                expect(findForbiddenWords(value), `${locale} ${key}: ${value}`).toEqual([]);
+            }
+        }
     });
 });
 

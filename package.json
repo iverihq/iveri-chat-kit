@@ -1,6 +1,6 @@
 {
   "name": "@iveri/chat-kit",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Baasi messenger client for Iveri products: a headless chat client with React hooks, and ready conversation components for React web and React Native",
   "license": "MIT",
   "repository": {
@@ -53,6 +53,7 @@
   "prettier": "@iveri/prettier-config",
   "dependencies": {
     "@iveri/tokens": "^0.2.0",
+    "intl-messageformat": "^12.1.5",
     "socket.io-client": "^4.8.4"
   },
   "peerDependencies": {
@@ -87,7 +88,6 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
     "eslint": "^10.14.0",
-    "intl-messageformat": "^12.1.5",
     "jsdom": "^31.0.0",
     "prettier": "^3.9.10",
     "react": "^19.3.1",

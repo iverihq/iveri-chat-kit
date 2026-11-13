@@ -6,6 +6,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { beforeAll, describe, expect, it } from 'vitest';
 
+import { CHAT_KIT_DEFAULT_CATALOGUE } from '../i18n/index.js';
 import { CONVERSATION, conversation, ME, message, ownMessage, participant } from '../testing/fixtures.js';
 import { createHarness } from '../testing/render.js';
 import type { ChatTheme } from '../theme/index.js';
@@ -145,6 +146,61 @@ describe('ChatThread', () => {
         expect(within(header).getByText('Giorgi B.')).toBeInTheDocument();
         expect(within(header).getByText('chat.label.driver')).toBeInTheDocument();
         expect(within(header).getByText('chat.title.taxi-ride')).toBeInTheDocument();
+    });
+});
+
+describe('ChatThread with no translate, as a customer mounts it', () => {
+    it('reads in the words the kit carries, in the reader’s language, and in the app’s own notice words', async () => {
+        const harness = createHarness({
+            translate: 'bundled',
+            locale: 'ka',
+            messages: { en: { 'acme.order.shipped': 'Order {order} is on its way' } },
+        });
+        harness.stub.on('GET', `/conversations/${CONVERSATION}`, () => ({ body: conversation({ myLastReadSeq: 2 }) }));
+        harness.stub.on('GET', '/me', () => ({ body: { userId: ME, isNetwork: true } }));
+        harness.stub.on('GET', '/blocks', () => ({ body: [] }));
+        harness.stub.on('GET', `/conversations/${CONVERSATION}/messages`, () => ({
+            body: {
+                hasOlder: false,
+                lastSeq: 3,
+                messages: [
+                    message({
+                        seq: 1,
+                        sender: null,
+                        kind: ChatMessageKind.SYSTEM,
+                        body: null,
+                        systemKey: 'acme.order.shipped',
+                        systemVariables: { order: 'A-17' },
+                    }),
+                    message({
+                        seq: 2,
+                        sender: null,
+                        kind: ChatMessageKind.SYSTEM,
+                        body: null,
+                        systemKey: 'acme.unheard-of',
+                        systemVariables: {},
+                    }),
+                    message({
+                        seq: 3,
+                        sender: null,
+                        kind: ChatMessageKind.SYSTEM,
+                        body: null,
+                        systemKey: 'chat.system.closed',
+                    }),
+                ],
+            },
+        }));
+
+        render(<ChatThread conversationId={CONVERSATION} />, { wrapper: harness.wrapper });
+
+        const log = await screen.findByRole('log');
+        // The app's notice has only English words, so a Georgian reader gets them rather than a key.
+        expect(await within(log).findByText('Order A-17 is on its way')).toBeInTheDocument();
+        const ka = (key: string): string => CHAT_KIT_DEFAULT_CATALOGUE.messages.ka?.[key] ?? key;
+        expect(within(log).getByText(ka('chat.system.unknown'))).toBeInTheDocument();
+        expect(within(log).getByText(ka('chat.system.closed'))).toBeInTheDocument();
+        expect(screen.getByRole('textbox', { name: ka('chat.composer.label') })).toBeInTheDocument();
+        expect(document.body.textContent).not.toMatch(/\bchat\.[a-z-]+\.[a-z-]/u);
     });
 });
 

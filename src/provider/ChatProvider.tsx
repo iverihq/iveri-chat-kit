@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 
 import type { ChatApiError, ChatClient } from '../client/index.js';
-import type { ChatTranslate } from '../i18n/index.js';
+import { createChatTranslator, type ChatMessages, type ChatTranslate } from '../i18n/index.js';
 import { chatQueryKeys } from '../query/query-keys.js';
 import {
     applyRealtimeFrame,
@@ -34,8 +34,18 @@ export interface ChatProviderProps {
     realtimeTicket?: boolean;
     locale: string;
     timeZone?: string;
-    /** The app's own `t`, bound to its locale, which has pulled the `chat-kit` namespace. */
-    translate: ChatTranslate;
+    /**
+     * The app's own `t`, bound to its locale, for an app that has pulled the `chat-kit` namespace into its own
+     * catalogue, as Iveri's products do. Given, it is used for every word and `messages` is not read.
+     * **Optional**: left out, the kit formats the words it carries in English, Russian and Georgian.
+     */
+    translate?: ChatTranslate;
+    /**
+     * Words read before the kit's own when no `translate` is given, by locale and key, as ICU patterns:
+     * another wording for any `chat.*` key, a language the kit does not carry, and the keys of the app's own
+     * notices posted through `POST /server/conversations/:id/notices`, which the kit cannot know.
+     */
+    messages?: ChatMessages;
     /**
      * The signed-in person's id as `chat-api` knows it: what `GET /me` answers as `userId`. Iveri's products
      * pass their identity user id, which is the same thing. **Optional**: left out, the kit reads it from
@@ -67,7 +77,8 @@ export function ChatProvider({
     realtimeTicket = false,
     locale,
     timeZone,
-    translate,
+    translate: givenTranslate,
+    messages,
     currentUserId: givenUserId,
     theme: givenTheme,
     socketFactory,
@@ -117,6 +128,16 @@ export function ChatProvider({
             typing.clear();
         },
         [typing],
+    );
+
+    // Written inline too, so keyed on its content for the same reason as the theme below. An app's own `t`
+    // is passed straight through, so Iveri's products format exactly as they did.
+    const messagesKey = givenTranslate === undefined ? JSON.stringify(messages ?? {}) : '';
+    const translate = useMemo<ChatTranslate>(
+        () =>
+            givenTranslate ??
+            createChatTranslator({ locale, messages: JSON.parse(messagesKey || '{}') as ChatMessages }),
+        [givenTranslate, locale, messagesKey],
     );
 
     // A theme is usually written inline, so a new object each render. Keyed on its content, the context
