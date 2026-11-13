@@ -169,6 +169,9 @@ importers:
       '@iveri/tokens':
         specifier: ^0.2.0
         version: 0.2.0
+      intl-messageformat:
+        specifier: ^12.1.5
+        version: 12.1.5
       socket.io-client:
         specifier: ^4.8.4
         version: 4.8.4(supports-color@8.1.1)
@@ -221,9 +224,6 @@ importers:
       eslint:
         specifier: ^10.14.0
         version: 10.14.0(jiti@2.7.0)(supports-color@8.1.1)
-      intl-messageformat:
-        specifier: ^12.1.5
-        version: 12.1.5
       jsdom:
         specifier: ^31.0.0
         version: 31.0.0

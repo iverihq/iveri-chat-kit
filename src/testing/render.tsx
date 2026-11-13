@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 
 import { createChatClient, type ChatClient } from '../client/index.js';
-import type { ChatTranslate } from '../i18n/index.js';
+import type { ChatMessages, ChatTranslate } from '../i18n/index.js';
 import { ChatProvider } from '../provider/index.js';
 import type { ChatSocketFactory } from '../realtime/index.js';
 import type { ChatTheme } from '../theme/index.js';
@@ -23,7 +23,9 @@ export function createHarness(
     options: {
         realtimeUrl?: string;
         socketFactory?: ChatSocketFactory;
-        translate?: ChatTranslate;
+        /** `'bundled'` leaves the prop out, as a customer's app does, so the kit uses the words it carries. */
+        translate?: ChatTranslate | 'bundled';
+        messages?: ChatMessages;
         locale?: string;
         /** `'omit'` leaves the prop out, as a customer's app may; the default is `ME`. */
         currentUserId?: Maybe<UUID> | 'omit';
@@ -49,7 +51,9 @@ export function createHarness(
                 socketFactory={options.socketFactory}
                 locale={options.locale ?? 'en'}
                 timeZone="Asia/Tbilisi"
-                translate={options.translate ?? keyTranslate}
+                {...(options.translate === 'bundled'
+                    ? { messages: options.messages }
+                    : { translate: options.translate ?? keyTranslate })}
                 realtimeTicket={options.realtimeTicket}
                 theme={options.theme}
                 {...(options.currentUserId === 'omit' ? {} : { currentUserId: options.currentUserId ?? ME })}
