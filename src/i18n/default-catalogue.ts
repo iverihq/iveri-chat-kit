@@ -5,7 +5,7 @@ import type { ChatCatalogue } from './catalogue.type.js';
 
 export const CHAT_KIT_DEFAULT_CATALOGUE: ChatCatalogue = {
     namespace: 'chat-kit',
-    version: 8,
+    version: 9,
     sourceLocale: 'en',
     messages: {
         en: {
@@ -225,6 +225,8 @@ export const CHAT_KIT_DEFAULT_CATALOGUE: ChatCatalogue = {
             'chat.refusal.pin-limit': 'You can pin up to {max} conversations.',
             'chat.refusal.request-pending': 'Accept this request to reply.',
             'chat.refusal.suspended': 'Your account is restricted, so you cannot do this right now.',
+            'chat.refusal.usage-limit-reached':
+                'This chat is not taking new messages right now. Please try again later.',
             'chat.report.disclosure': 'The people who review reports will see this message and the five before it.',
             'chat.report.note': 'Anything else we should know',
             'chat.report.note-hint': 'Optional.',
@@ -503,6 +505,7 @@ export const CHAT_KIT_DEFAULT_CATALOGUE: ChatCatalogue = {
             'chat.refusal.pin-limit': 'შეგიძლია მაქსიმუმ {max} საუბრის მიმაგრება.',
             'chat.refusal.request-pending': 'პასუხისთვის მიიღე ეს მოთხოვნა.',
             'chat.refusal.suspended': 'შენი ანგარიში შეზღუდულია, ამიტომ ახლა ამას ვერ გააკეთებ.',
+            'chat.refusal.usage-limit-reached': 'ეს ჩატი ახლა ახალ შეტყობინებებს ვერ იღებს. სცადე მოგვიანებით.',
             'chat.report.disclosure': 'საჩივრების განმხილველები დაინახავენ ამ შეტყობინებას და მის წინა ხუთს.',
             'chat.report.note': 'კიდევ რა უნდა ვიცოდეთ',
             'chat.report.note-hint': 'არასავალდებულო.',
@@ -787,6 +790,7 @@ export const CHAT_KIT_DEFAULT_CATALOGUE: ChatCatalogue = {
             'chat.refusal.pin-limit': 'Можно закрепить не больше {max} разговоров.',
             'chat.refusal.request-pending': 'Примите запрос, чтобы ответить.',
             'chat.refusal.suspended': 'Ваш аккаунт ограничен, поэтому сейчас это сделать нельзя.',
+            'chat.refusal.usage-limit-reached': 'Этот чат сейчас не принимает новые сообщения. Попробуйте позже.',
             'chat.report.disclosure': 'Те, кто рассматривает жалобы, увидят это сообщение и пять предыдущих.',
             'chat.report.note': 'Что ещё нам стоит знать',
             'chat.report.note-hint': 'Необязательно.',

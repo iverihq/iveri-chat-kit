@@ -1,6 +1,6 @@
 {
   "name": "@iveri/chat-kit",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Baasi messenger client for Iveri products: a headless chat client with React hooks, and ready conversation components for React web and React Native",
   "license": "MIT",
   "repository": {
@@ -72,7 +72,7 @@
     }
   },
   "devDependencies": {
-    "@iveri/contracts": "^0.81.0",
+    "@iveri/contracts": "^0.97.0",
     "@iveri/eslint-config": "^0.2.3",
     "@iveri/prettier-config": "^0.1.0",
     "@iveri/react-kit": "^0.13.1",
