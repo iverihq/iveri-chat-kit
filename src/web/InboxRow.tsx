@@ -77,7 +77,9 @@ export function InboxRow({
                         )}
                         <span
                             className={cn(
-                                'ms-auto shrink-0 text-caption tabular-nums',
+                                // Hidden while the menu button shows in its place, as the badges are, so neither
+                                // covers the other.
+                                'ms-auto shrink-0 text-caption tabular-nums [@media(hover:hover)]:group-focus-within/row:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-0',
                                 isUnread && !muted ? 'font-semibold text-chat-accent' : 'text-chat-faint',
                             )}
                         >
@@ -133,9 +135,9 @@ export function InboxRow({
                     </span>
                 </span>
             </button>
-            {/* A pointer reveals the menu over the badges on hover or focus; a touch screen has no hover, so there
-                it keeps a column of its own beside the row. */}
-            <div className="shrink-0 pe-1 [@media(hover:hover)]:absolute [@media(hover:hover)]:end-2 [@media(hover:hover)]:bottom-1.5 [@media(hover:hover)]:pe-0 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within/row:opacity-100 [@media(hover:hover)]:group-hover/row:opacity-100">
+            {/* A pointer reveals the menu, centred on the row's end, in place of the time and the badges, which hide
+                while it shows; a touch screen has no hover, so there it keeps a column of its own beside the row. */}
+            <div className="shrink-0 pe-1 [@media(hover:hover)]:absolute [@media(hover:hover)]:end-2 [@media(hover:hover)]:top-1/2 [@media(hover:hover)]:-translate-y-1/2 [@media(hover:hover)]:pe-0 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within/row:opacity-100 [@media(hover:hover)]:group-hover/row:opacity-100">
                 <ConversationMenu
                     conversation={conversation}
                     label={t('chat.inbox.options', { title: heading.title })}

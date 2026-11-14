@@ -1,7 +1,7 @@
 import type { Nullable } from '@iveri/contracts';
 import { CHAT_QUICK_REACTIONS } from '@iveri/contracts/chat';
 import type { ChatMessage } from '@iveri/contracts/chat';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import type { ChatDeleteScope } from '../client/index.js';
 import { useChatText } from '../provider/index.js';
@@ -10,6 +10,7 @@ import { myReaction, type ChatMessagePermissions } from '../util/index.js';
 import { ChatMenu, type ChatMenuItem } from './ChatMenu.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
 import { CopyIcon, EditIcon, FlagIcon, ReactIcon, ReplyIcon, TrashIcon } from './icons.js';
+import { fitPopover, type PopoverFit } from './popover-fit.js';
 import { cn, FOCUS_RING, ICON_BUTTON } from './style.js';
 
 export interface MessageActionsProps {
@@ -45,6 +46,12 @@ export function MessageActions({
 }: Readonly<MessageActionsProps>): React.JSX.Element {
     const t = useChatText();
     const [isPicking, setIsPicking] = useState(false);
+    // The picker and the menu grow toward the bubble, which is where there is room beside a toolbar at its side.
+    const preferredPicker: PopoverFit = { vertical: 'above', align: message.isOwn ? 'start' : 'end' };
+    const [pickerFit, setPickerFit] = useState<PopoverFit>(preferredPicker);
+    const reactButton = useRef<HTMLButtonElement>(null);
+    const picker = useRef<HTMLDivElement>(null);
+    const pickerArea = useRef<HTMLDivElement>(null);
     const [deleting, setDeleting] = useState<ChatDeleteScope | null>(null);
     const [copied, setCopied] = useState(false);
     const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -56,6 +63,51 @@ export function MessageActions({
         },
         [],
     );
+
+    // One of the picker and the menu at a time: open together they overlap, and the second click then lands on the
+    // one in front.
+    const setMenuOpen = (isOpen: boolean): void => {
+        if (isOpen) setIsPicking(false);
+        onMenuOpenChange?.(isOpen);
+    };
+
+    const closePicker = (): void => {
+        setIsPicking(false);
+    };
+
+    // A click anywhere outside, or Escape wherever focus is (after clicking the button it is on the button, not in
+    // the picker), closes it.
+    useEffect(() => {
+        if (!isPicking) return undefined;
+        const onPointerDown = (event: PointerEvent): void => {
+            if (pickerArea.current !== null && !pickerArea.current.contains(event.target as Node)) setIsPicking(false);
+        };
+        const onKeyDown = (event: KeyboardEvent): void => {
+            if (event.key !== 'Escape') return;
+            event.stopPropagation();
+            setIsPicking(false);
+            reactButton.current?.focus();
+        };
+        document.addEventListener('pointerdown', onPointerDown);
+        document.addEventListener('keydown', onKeyDown);
+
+        return (): void => {
+            document.removeEventListener('pointerdown', onPointerDown);
+            document.removeEventListener('keydown', onKeyDown);
+        };
+    }, [isPicking]);
+
+    useLayoutEffect(() => {
+        if (!isPicking || picker.current === null || reactButton.current === null) return;
+        const next = fitPopover(
+            reactButton.current,
+            { width: picker.current.offsetWidth, height: picker.current.offsetHeight },
+            { vertical: 'above', align: message.isOwn ? 'start' : 'end' },
+        );
+        setPickerFit((current) =>
+            current.vertical === next.vertical && current.align === next.align ? current : next,
+        );
+    }, [isPicking, message.isOwn]);
 
     const copy = (): void => {
         if (message.body === null) return;
@@ -121,13 +173,15 @@ export function MessageActions({
             )}
         >
             {permissions.canReact && (
-                <div className="relative">
+                <div ref={pickerArea} className="relative">
                     <button
+                        ref={reactButton}
                         type="button"
                         aria-label={t('chat.reaction.add')}
                         aria-expanded={isPicking}
                         onClick={() => {
-                            setIsPicking((current) => !current);
+                            if (!isPicking) onMenuOpenChange?.(false);
+                            setIsPicking(!isPicking);
                         }}
                         className={cn(ICON_BUTTON, 'h-8 w-8')}
                     >
@@ -135,16 +189,14 @@ export function MessageActions({
                     </button>
                     {isPicking && (
                         <div
+                            ref={picker}
                             role="group"
                             aria-label={t('chat.reaction.quick')}
-                            onKeyDown={(event) => {
-                                if (event.key === 'Escape') setIsPicking(false);
-                            }}
-                            // Anchored on the side where the thread has room: a picker centred on the button was
-                            // cut off by the thread's edge on somebody else's message.
+                            // Measured on opening, so it is never cut off by the thread's edges.
                             className={cn(
-                                'absolute bottom-full z-40 mb-2 flex animate-scale-in gap-0.5 rounded-full border border-chat-line bg-chat-surface p-1 shadow-lg',
-                                message.isOwn ? 'end-0' : 'start-0',
+                                'absolute z-40 flex animate-scale-in gap-0.5 rounded-full border border-chat-line bg-chat-surface p-1 shadow-lg',
+                                pickerFit.vertical === 'above' ? 'bottom-full mb-2' : 'top-full mt-2',
+                                pickerFit.align === 'end' ? 'end-0' : 'start-0',
                             )}
                         >
                             {CHAT_QUICK_REACTIONS.map((emoji) => (
@@ -154,7 +206,7 @@ export function MessageActions({
                                     aria-pressed={mine === emoji}
                                     aria-label={t('chat.reaction.react-with', { emoji })}
                                     onClick={() => {
-                                        setIsPicking(false);
+                                        closePicker();
                                         onReact(mine === emoji ? null : emoji);
                                     }}
                                     className={cn(
@@ -184,9 +236,10 @@ export function MessageActions({
                 label={t('chat.action.more')}
                 items={items}
                 isOpen={isMenuOpen}
-                onOpenChange={onMenuOpenChange}
+                onOpenChange={setMenuOpen}
                 triggerClassName="h-8 w-8"
                 placement="above"
+                align={message.isOwn ? 'start' : 'end'}
             />
             {copied && (
                 <span role="status" className="px-2 text-caption font-medium text-positive">

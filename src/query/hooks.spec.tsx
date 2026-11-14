@@ -5,14 +5,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { useChatRealtime } from '../provider/index.js';
 import { fakeSocketFactory } from '../testing/fake-socket.js';
-import { CONVERSATION, conversation, message, ownMessage } from '../testing/fixtures.js';
+import { CONVERSATION, NINO, conversation, message, ownMessage } from '../testing/fixtures.js';
 import { createHarness } from '../testing/render.js';
 
 import { chatQueryKeys } from './query-keys.js';
 import { useMarkRead } from './use-mark-read.js';
 import { useMessages } from './use-messages.js';
 import { useSendMessage } from './use-send-message.js';
-import { useTyping } from './use-typing.js';
+import { TYPING_STOP_AFTER_LEAVING_MS, useTyping, useTypingPeople } from './use-typing.js';
 
 const MESSAGES = `/conversations/${CONVERSATION}/messages`;
 
@@ -156,6 +156,53 @@ describe('useMessages', () => {
         expect(catchUp.every((request) => Number(request.query.get('afterSeq')) <= 3)).toBe(true);
     });
 
+    it('drops somebody from the typing line as soon as their message arrives', async () => {
+        const { factory, sockets } = fakeSocketFactory();
+        const harness = createHarness({ realtimeUrl: 'http://rt.test', socketFactory: factory });
+        const held = [message({ seq: 1 })];
+        harness.stub.on('GET', MESSAGES, (request) =>
+            request.query.get('afterSeq') === null ? page(held) : page([...held, message({ seq: 2 })], 2),
+        );
+        const { result } = renderHook(
+            () => {
+                useChatRealtime();
+
+                return { messages: useMessages(CONVERSATION), typing: useTypingPeople(CONVERSATION) };
+            },
+            { wrapper: harness.wrapper },
+        );
+        await waitFor(() => {
+            expect(result.current.messages.items).toHaveLength(1);
+        });
+
+        act(() => {
+            sockets[0].emit(CHAT_SOCKET_EVENT.READY, {});
+            sockets[0].emit(CHAT_SOCKET_EVENT.FRAME, {
+                event: ChatRealtimeEvent.CONVERSATION_TYPING,
+                conversationId: CONVERSATION,
+                seq: null,
+                userId: NINO,
+                isTyping: true,
+            });
+        });
+        await waitFor(() => {
+            expect(result.current.typing).toEqual([NINO]);
+        });
+
+        act(() => {
+            sockets[0].emit(CHAT_SOCKET_EVENT.FRAME, {
+                event: ChatRealtimeEvent.CONVERSATION_UPDATED,
+                conversationId: CONVERSATION,
+                seq: 2,
+                userId: null,
+            });
+        });
+        await waitFor(() => {
+            expect(result.current.messages.items).toHaveLength(2);
+        });
+        expect(result.current.typing).toEqual([]);
+    });
+
     it('polls every 5 seconds without a socket and every 30 once it is connected', async () => {
         const { factory, sockets } = fakeSocketFactory();
         const harness = createHarness({ realtimeUrl: 'http://rt.test', socketFactory: factory });
@@ -191,21 +238,92 @@ describe('useMessages', () => {
 });
 
 describe('useTyping and useMarkRead', () => {
-    it('sends at most one typing signal every three seconds', async () => {
+    const typingRequests = (harness: ReturnType<typeof createHarness>): unknown[] =>
+        harness.stub.requests
+            .filter((request) => request.path.endsWith('/typing'))
+            .map((request) => (request.body as { isTyping?: boolean } | undefined)?.isTyping ?? 'start');
+
+    it('sends at most one typing start every three seconds, with no body', async () => {
         const harness = createHarness();
         harness.stub.on('POST', `/conversations/${CONVERSATION}/typing`, () => ({ body: { accepted: true } }));
         let now = 1_000;
         const { result } = renderHook(() => useTyping(CONVERSATION, () => now), { wrapper: harness.wrapper });
 
-        result.current();
+        result.current.start();
         now += 1_000;
-        result.current();
+        result.current.start();
         now += 2_100;
-        result.current();
+        result.current.start();
 
         await waitFor(() => {
-            expect(harness.stub.requests.filter((request) => request.path.endsWith('/typing'))).toHaveLength(2);
+            expect(typingRequests(harness)).toEqual(['start', 'start']);
         });
+        expect(harness.stub.requests.every((request) => request.body === undefined)).toBe(true);
+    });
+
+    it('sends one stop after a start, never two in a row, and announces the next keystroke at once', async () => {
+        const harness = createHarness();
+        harness.stub.on('POST', `/conversations/${CONVERSATION}/typing`, () => ({ body: { accepted: true } }));
+        const now = 1_000;
+        const { result } = renderHook(() => useTyping(CONVERSATION, () => now), { wrapper: harness.wrapper });
+
+        result.current.stop();
+        result.current.start();
+        result.current.stop();
+        result.current.stop();
+        // The same instant as the first start: the stop reset the throttle.
+        result.current.start();
+
+        await waitFor(() => {
+            expect(typingRequests(harness)).toEqual(['start', false, 'start']);
+        });
+    });
+
+    it('stops when the composer goes away or the conversation changes, only if it had started', async () => {
+        const harness = createHarness();
+        const other = '00000000-0000-4000-8000-0000000000aa';
+        harness.stub.on('POST', /\/typing$/, () => ({ body: { accepted: true } }));
+        const { result, rerender, unmount } = renderHook(({ id }) => useTyping(id), {
+            wrapper: harness.wrapper,
+            initialProps: { id: CONVERSATION },
+        });
+
+        result.current.start();
+        rerender({ id: other });
+        rerender({ id: CONVERSATION });
+        result.current.start();
+        unmount();
+
+        await waitFor(() => {
+            expect(harness.stub.requests.map((request) => [request.path, request.body])).toEqual([
+                [`/conversations/${CONVERSATION}/typing`, undefined],
+                [`/conversations/${CONVERSATION}/typing`, { isTyping: false }],
+                [`/conversations/${CONVERSATION}/typing`, undefined],
+                [`/conversations/${CONVERSATION}/typing`, { isTyping: false }],
+            ]);
+        });
+    });
+
+    it('stops a short while after leaving with text, and not when focus comes back first', async () => {
+        vi.useFakeTimers();
+        try {
+            const harness = createHarness();
+            harness.stub.on('POST', `/conversations/${CONVERSATION}/typing`, () => ({ body: { accepted: true } }));
+            const { result } = renderHook(() => useTyping(CONVERSATION), { wrapper: harness.wrapper });
+
+            result.current.start();
+            result.current.leave();
+            await vi.advanceTimersByTimeAsync(TYPING_STOP_AFTER_LEAVING_MS - 1);
+            result.current.resume();
+            await vi.advanceTimersByTimeAsync(TYPING_STOP_AFTER_LEAVING_MS);
+            expect(typingRequests(harness)).toEqual(['start']);
+
+            result.current.leave();
+            await vi.advanceTimersByTimeAsync(TYPING_STOP_AFTER_LEAVING_MS);
+            expect(typingRequests(harness)).toEqual(['start', false]);
+        } finally {
+            vi.useRealTimers();
+        }
     });
 
     it('reports reading once per pause, and only ever forward', async () => {

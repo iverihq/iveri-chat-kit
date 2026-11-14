@@ -19,6 +19,7 @@ import {
 import { BlockIcon } from './icons.js';
 import { MessageActions } from './MessageActions.js';
 import { MessageAttachments } from './MessageAttachments.js';
+import { clippingBox, roomBeside } from './popover-fit.js';
 import { ReactionBar } from './ReactionBar.js';
 import { ReadMark } from './ReadMark.js';
 import { cn, FOCUS_RING } from './style.js';
@@ -41,6 +42,12 @@ const OTHER_CORNERS: Record<BubblePosition, string> = {
 };
 
 const LONG_PRESS_MS = 450;
+
+/** Where the actions toolbar sits: beside the bubble when there is room, else above it, else below it. */
+type ToolbarSide = 'beside' | 'above' | 'below';
+
+/** The toolbar's width plus the padding that bridges it to the bubble, before it has been measured. */
+const TOOLBAR_FALLBACK_WIDTH_PX = 120;
 
 export interface MessageBubbleProps {
     item: ChatThreadItem;
@@ -147,7 +154,10 @@ export function MessageBubble({
     const t = useChatText();
     const { translate, locale, timeZone } = useChatContext();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [toolbarSide, setToolbarSide] = useState<ToolbarSide>('beside');
     const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const bubble = useRef<HTMLDivElement>(null);
+    const toolbar = useRef<HTMLDivElement>(null);
 
     const message = item.type === 'message' ? item.message : null;
     const pending = item.type === 'pending' ? item.pending : null;
@@ -166,6 +176,26 @@ export function MessageBubble({
         attachments.every((attachment) => attachment.kind === ChatAttachmentKind.PHOTO);
     const permissions = message === null ? null : messagePermissions(message, conversation, now);
 
+    // Measured whenever the toolbar is about to show: beside the bubble (to the left of mine, to the right of
+    // everybody else's) where the thread has room for it, otherwise above the bubble, or below it when the bubble is
+    // at the thread's top edge. Never over the bubble's own text.
+    const placeToolbar = (): void => {
+        const node = bubble.current;
+        if (node === null) return;
+        const width = toolbar.current?.offsetWidth ?? TOOLBAR_FALLBACK_WIDTH_PX;
+        const height = toolbar.current?.offsetHeight ?? 0;
+        let next: ToolbarSide = 'beside';
+        if (roomBeside(node, isOwn ? 'start' : 'end') < width) {
+            next = node.getBoundingClientRect().top - clippingBox(node).top >= height ? 'above' : 'below';
+        }
+        if (next !== toolbarSide) setToolbarSide(next);
+    };
+
+    const openMenu = (): void => {
+        placeToolbar();
+        setIsMenuOpen(true);
+    };
+
     const cancelPress = (): void => {
         if (pressTimer.current !== null) clearTimeout(pressTimer.current);
         pressTimer.current = null;
@@ -174,9 +204,7 @@ export function MessageBubble({
     const onPointerDown = (event: ReactPointerEvent): void => {
         if (event.pointerType !== 'touch' || permissions === null) return;
         cancelPress();
-        pressTimer.current = setTimeout(() => {
-            setIsMenuOpen(true);
-        }, LONG_PRESS_MS);
+        pressTimer.current = setTimeout(openMenu, LONG_PRESS_MS);
     };
 
     const meta = (
@@ -207,8 +235,10 @@ export function MessageBubble({
             onContextMenu={(event) => {
                 if (permissions === null) return;
                 event.preventDefault();
-                setIsMenuOpen(true);
+                openMenu();
             }}
+            onPointerEnter={placeToolbar}
+            onFocus={placeToolbar}
             onPointerDown={onPointerDown}
             onPointerUp={cancelPress}
             onPointerLeave={cancelPress}
@@ -219,6 +249,7 @@ export function MessageBubble({
             }}
         >
             <div
+                ref={bubble}
                 className={cn(
                     'relative max-w-full rounded-chat-card border transition-shadow duration-normal',
                     isPhotoOnly ? 'p-1' : 'px-3.5 pt-2 pb-1.5',
@@ -256,6 +287,45 @@ export function MessageBubble({
                     </>
                 )}
                 {meta}
+                {message !== null && permissions !== null && !isDeleted && (
+                    // The padding, not a margin, bridges the toolbar to the bubble, so a pointer travelling from one
+                    // to the other never leaves the message and the toolbar stays.
+                    <div
+                        ref={toolbar}
+                        className={cn(
+                            // Raised while in use: the toolbar is its own stacking context (it is translated), so an
+                            // open menu or picker would otherwise sit under the next message's toolbar.
+                            'absolute z-20 transition-opacity duration-fast focus-within:z-30 [@media(hover:hover)]:group-hover/message:z-30',
+                            toolbarSide === 'beside' &&
+                                cn('top-1/2 -translate-y-1/2', isOwn ? 'end-full pe-2' : 'start-full ps-2'),
+                            toolbarSide === 'above' && cn('bottom-full pb-1', isOwn ? 'end-0' : 'start-0'),
+                            toolbarSide === 'below' && cn('top-full pt-1', isOwn ? 'end-0' : 'start-0'),
+                            isMenuOpen
+                                ? 'z-30 opacity-100'
+                                : 'pointer-events-none opacity-0 group-focus-within/message:pointer-events-auto group-focus-within/message:opacity-100 [@media(hover:hover)]:group-hover/message:pointer-events-auto [@media(hover:hover)]:group-hover/message:opacity-100',
+                        )}
+                    >
+                        <MessageActions
+                            message={message}
+                            permissions={permissions}
+                            isMenuOpen={isMenuOpen}
+                            onMenuOpenChange={setIsMenuOpen}
+                            onReply={() => {
+                                onReply(message);
+                            }}
+                            onReact={(emoji) => {
+                                onReact(message.id, emoji);
+                            }}
+                            onEdit={() => {
+                                onEdit(message);
+                            }}
+                            onDelete={(scope) => onDelete(message.id, scope)}
+                            onReport={() => {
+                                onReport(message);
+                            }}
+                        />
+                    </div>
+                )}
             </div>
 
             {message !== null && (
@@ -294,37 +364,6 @@ export function MessageBubble({
                         {t('chat.message.discard')}
                     </button>
                 </div>
-            )}
-
-            {message !== null && permissions !== null && !isDeleted && (
-                <MessageActions
-                    message={message}
-                    permissions={permissions}
-                    isMenuOpen={isMenuOpen}
-                    onMenuOpenChange={setIsMenuOpen}
-                    onReply={() => {
-                        onReply(message);
-                    }}
-                    onReact={(emoji) => {
-                        onReact(message.id, emoji);
-                    }}
-                    onEdit={() => {
-                        onEdit(message);
-                    }}
-                    onDelete={(scope) => onDelete(message.id, scope)}
-                    onReport={() => {
-                        onReport(message);
-                    }}
-                    className={cn(
-                        // Over the bubble's top edge, growing toward the middle of the thread, where there is room
-                        // even when the bubble is a single word.
-                        'absolute -top-5 z-20 transition-opacity duration-fast',
-                        isOwn ? 'end-2' : 'start-2',
-                        isMenuOpen
-                            ? 'opacity-100'
-                            : 'pointer-events-none opacity-0 group-focus-within/message:pointer-events-auto group-focus-within/message:opacity-100 [@media(hover:hover)]:group-hover/message:pointer-events-auto [@media(hover:hover)]:group-hover/message:opacity-100',
-                    )}
-                />
             )}
         </div>
     );

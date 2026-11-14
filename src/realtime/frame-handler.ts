@@ -37,7 +37,7 @@ async function invalidateConversation(queryClient: QueryClient, conversationId: 
  * - `inbox.updated` → every inbox, and the conversation's detail when one is named (my read state,
  *   moved by another of my devices).
  * - `call.updated` → every call query: the call, a conversation's current call, what is ringing for me.
- * - `conversation.typing` → the typing line. My own devices' frames are stored too and filtered where
+ * - `conversation.typing` → the typing line: a start adds the person, a stop (`isTyping: false`) drops them. My own devices' frames are stored too and filtered where
  *   the line is read (`useTypingPeople`), which is the one place that knows who "me" is right now.
  */
 export async function applyRealtimeFrame(frame: ChatRealtimeFrame, context: FrameHandlerContext): Promise<void> {
@@ -70,7 +70,9 @@ export async function applyRealtimeFrame(frame: ChatRealtimeFrame, context: Fram
         }
         case ChatRealtimeEvent.CONVERSATION_TYPING: {
             if (frame.conversationId === null || frame.userId === null) return;
-            context.typing.add(frame.conversationId, frame.userId);
+            // Absent means started: a server older than stop frames sends none.
+            if (frame.isTyping === false) context.typing.remove(frame.conversationId, frame.userId);
+            else context.typing.add(frame.conversationId, frame.userId);
 
             return;
         }

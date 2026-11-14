@@ -7,7 +7,7 @@ import {
 } from '@iveri/contracts/chat';
 import type { ChatConversation, ChatMessage } from '@iveri/contracts/chat';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, AppState, Image, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { useChatContext, useChatText } from '../provider/index.js';
 import {
@@ -51,7 +51,7 @@ export function ChatComposer({ conversation, mode, onModeChange }: Readonly<Chat
     const { theme, capabilities } = useChatNative();
     const sender = useSendMessage(conversation.id);
     const edit = useEditMessage(conversation.id);
-    const notifyTyping = useTyping(conversation.id);
+    const typing = useTyping(conversation.id);
     const drafts = useComposerAttachments();
     const settings = useConversationSettings(conversation.id);
     const [text, setText] = useState('');
@@ -70,6 +70,19 @@ export function ChatComposer({ conversation, mode, onModeChange }: Readonly<Chat
     useEffect(() => {
         if (mode !== null) field.current?.focus();
     }, [mode]);
+
+    // The app going to the background with text still in the field tells the others I stopped, after a short delay;
+    // coming back before it runs out sends nothing.
+    useEffect(() => {
+        const subscription = AppState.addEventListener('change', (state) => {
+            if (state === 'active') typing.resume();
+            else typing.leave();
+        });
+
+        return (): void => {
+            subscription.remove();
+        };
+    }, [typing]);
 
     useEffect(() => {
         if (recording === null) return undefined;
@@ -165,6 +178,7 @@ export function ChatComposer({ conversation, mode, onModeChange }: Readonly<Chat
         const attachments = drafts.ready;
         const replyTo = mode?.type === 'reply' ? toReplyPreview(mode.message) : null;
         setText('');
+        typing.stop();
         drafts.clear();
         onModeChange(null);
         await sender.send({ body: trimmed, attachments, replyTo });
@@ -343,7 +357,9 @@ export function ChatComposer({ conversation, mode, onModeChange }: Readonly<Chat
                     placeholderTextColor={c.faint}
                     onChangeText={(value) => {
                         setText(value);
-                        if (value.trim().length > 0 && !isEditing) notifyTyping();
+                        if (isEditing) return;
+                        if (value.trim().length > 0) typing.start();
+                        else typing.stop();
                     }}
                     style={[
                         styles.input,

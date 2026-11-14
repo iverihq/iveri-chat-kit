@@ -89,7 +89,7 @@ export function ChatComposer({
     const { client, translate, locale } = useChatContext();
     const sender = useSendMessage(conversation.id);
     const edit = useEditMessage(conversation.id);
-    const notifyTyping = useTyping(conversation.id);
+    const typing = useTyping(conversation.id);
     const drafts = useComposerAttachments();
     const recorder = useVoiceRecorder();
     const settings = useConversationSettings(conversation.id);
@@ -136,6 +136,31 @@ export function ChatComposer({
             observer.disconnect();
         };
     }, [text]);
+
+    // Leaving the window with text still in the field tells the others I stopped, after a short delay; coming
+    // back before it runs out sends nothing.
+    useEffect(() => {
+        if (typeof window === 'undefined') return undefined;
+        const onBlur = (): void => {
+            typing.leave();
+        };
+        const onFocus = (): void => {
+            typing.resume();
+        };
+        const onVisibility = (): void => {
+            if (document.visibilityState === 'hidden') typing.leave();
+            else typing.resume();
+        };
+        window.addEventListener('blur', onBlur);
+        window.addEventListener('focus', onFocus);
+        document.addEventListener('visibilitychange', onVisibility);
+
+        return (): void => {
+            window.removeEventListener('blur', onBlur);
+            window.removeEventListener('focus', onFocus);
+            document.removeEventListener('visibilitychange', onVisibility);
+        };
+    }, [typing]);
 
     useEffect(() => {
         const urls = previews.current;
@@ -223,6 +248,7 @@ export function ChatComposer({
         // Cleared before the answer: the message is already on screen as "sending", and a failure keeps it
         // there with its retry, so the composer is free for the next one.
         setText('');
+        typing.stop();
         drafts.clear();
         onModeChange(null);
         await sender.send({ body: trimmed, attachments, replyTo });
@@ -470,7 +496,9 @@ export function ChatComposer({
                         placeholder={t('chat.composer.placeholder')}
                         onChange={(event) => {
                             setText(event.target.value);
-                            if (event.target.value.trim().length > 0 && !isEditing) notifyTyping();
+                            if (isEditing) return;
+                            if (event.target.value.trim().length > 0) typing.start();
+                            else typing.stop();
                         }}
                         onKeyDown={onKeyDown}
                         onPaste={onPaste}

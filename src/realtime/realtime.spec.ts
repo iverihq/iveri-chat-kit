@@ -419,4 +419,21 @@ describe('applyRealtimeFrame', () => {
         expect(typing.typing(CONVERSATION)).toEqual([NINO]);
         typing.clear();
     });
+
+    it('takes somebody out of the typing line at once on a stop frame', async () => {
+        const typing = new ChatTypingStore();
+        const context = { queryClient: new QueryClient(), typing };
+        const frame = {
+            event: ChatRealtimeEvent.CONVERSATION_TYPING,
+            conversationId: CONVERSATION,
+            seq: null,
+        } as const;
+
+        await applyRealtimeFrame({ ...frame, userId: NINO, isTyping: true }, context);
+        expect(typing.typing(CONVERSATION)).toEqual([NINO]);
+
+        await applyRealtimeFrame({ ...frame, userId: NINO, isTyping: false }, context);
+        expect(typing.typing(CONVERSATION)).toEqual([]);
+        typing.clear();
+    });
 });
