@@ -13,8 +13,11 @@ import { ChatThreadScreen } from './ChatThreadScreen.js';
 // its room need a phone; both are stood in for, so this proves the layer rings, answers and connects with what
 // `chat-api` gave it, and nothing about audio or video.
 const rooms = vi.hoisted(() => ({ connected: [] as { url: string; token: string }[], sessions: 0 }));
+// Hoisted with the mock that uses it, and named in camelCase as a property, since the rules want one.
+const stand = vi.hoisted(() => ({ noVideo: (): null => null }));
 
 vi.mock('@livekit/react-native', () => ({
+    VideoView: stand.noVideo,
     AudioSession: {
         startAudioSession: (): Promise<void> => {
             rooms.sessions += 1;
@@ -23,7 +26,6 @@ vi.mock('@livekit/react-native', () => ({
         },
         stopAudioSession: (): Promise<void> => Promise.resolve(),
     },
-    VideoView: (): null => null,
 }));
 
 vi.mock('livekit-client', () => {
@@ -60,40 +62,39 @@ vi.mock('livekit-client', () => {
 const OTHER = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const CALL = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 
-const call = (overrides: Partial<ChatCall> = {}): ChatCall =>
-    ({
-        id: CALL,
-        conversationId: CONVERSATION,
-        kind: ChatCallKind.VOICE,
-        status: ChatCallStatus.RINGING,
-        endReason: null,
-        startedBy: OTHER,
-        participants: [
-            {
-                userId: ME,
-                displayName: 'Me',
-                avatar: null,
-                state: ChatCallParticipantState.RINGING,
-                joinedAt: null,
-                leftAt: null,
-                isMe: true,
-            },
-            {
-                userId: OTHER,
-                displayName: 'Giorgi',
-                avatar: null,
-                state: ChatCallParticipantState.JOINED,
-                joinedAt: null,
-                leftAt: null,
-                isMe: false,
-            },
-        ],
-        ringExpiresAt: '2026-11-14T10:00:45.000Z',
-        answeredAt: null,
-        endedAt: null,
-        createdAt: '2026-11-14T10:00:00.000Z',
-        ...overrides,
-    }) as ChatCall;
+const call = (overrides: Partial<ChatCall> = {}): ChatCall => ({
+    id: CALL,
+    conversationId: CONVERSATION,
+    kind: ChatCallKind.VOICE,
+    status: ChatCallStatus.RINGING,
+    endReason: null,
+    startedBy: OTHER,
+    participants: [
+        {
+            userId: ME,
+            displayName: 'Me',
+            avatar: null,
+            state: ChatCallParticipantState.RINGING,
+            joinedAt: null,
+            leftAt: null,
+            isMe: true,
+        },
+        {
+            userId: OTHER,
+            displayName: 'Giorgi',
+            avatar: null,
+            state: ChatCallParticipantState.JOINED,
+            joinedAt: null,
+            leftAt: null,
+            isMe: false,
+        },
+    ],
+    ringExpiresAt: '2026-11-14T10:00:45.000Z',
+    answeredAt: null,
+    endedAt: null,
+    createdAt: '2026-11-14T10:00:00.000Z',
+    ...overrides,
+});
 
 beforeEach(() => {
     rooms.connected = [];
