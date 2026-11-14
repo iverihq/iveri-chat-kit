@@ -16,10 +16,16 @@ import { useCallMedia } from './use-call-media.js';
 /** How long the last line ("No answer", "Call ended") stays before the screen goes. */
 const END_LINE_MS = 2_500;
 
-const CONTROL = cn(
-    'inline-flex h-14 w-14 items-center justify-center rounded-full bg-white/15 text-white transition-colors duration-fast hover:bg-white/25',
+/**
+ * A round control's shape. Its colour is added separately, never overridden: two background utilities on one
+ * element are decided by the order Tailwind emits them, which is how the hang-up button first came out grey.
+ */
+const CONTROL_SHAPE = cn(
+    'inline-flex h-14 w-14 items-center justify-center rounded-full text-white transition duration-fast',
     FOCUS_RING,
 );
+const CONTROL = cn(CONTROL_SHAPE, 'bg-white/15 hover:bg-white/25');
+const HANG_UP = cn(CONTROL_SHAPE, 'bg-critical hover:brightness-95');
 
 export interface ChatCallScreenProps {
     callId: UUID;
@@ -155,12 +161,7 @@ export function ChatCallScreen({ callId, join, onClose }: Readonly<ChatCallScree
                                 )}
                             </button>
                         )}
-                        <button
-                            type="button"
-                            aria-label={t('chat.call.hang-up')}
-                            onClick={hangUp}
-                            className={cn(CONTROL, 'bg-critical hover:bg-critical hover:brightness-95')}
-                        >
+                        <button type="button" aria-label={t('chat.call.hang-up')} onClick={hangUp} className={HANG_UP}>
                             <HangUpIcon className="h-6 w-6" />
                         </button>
                     </div>

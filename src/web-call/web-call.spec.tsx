@@ -240,7 +240,12 @@ describe('ChatCallLayer', () => {
         await waitFor(() => {
             expect(rooms.connected).toHaveLength(1);
         });
-        await userEvent.click(await screen.findByRole('button', { name: 'chat.call.hang-up' }));
+        const hangUp = await screen.findByRole('button', { name: 'chat.call.hang-up' });
+
+        // Red, and only red: a second background beside it would be decided by Tailwind's emit order.
+        expect(hangUp.className).toContain('bg-critical');
+        expect(hangUp.className).not.toContain('bg-white');
+        await userEvent.click(hangUp);
 
         expect(await screen.findByText('chat.call.ended {"name":"Giorgi"}')).toBeInTheDocument();
         await waitFor(() => {
