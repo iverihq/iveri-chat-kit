@@ -84,6 +84,7 @@ const INTERFACE_KEYS = [
     'chat.call.unmute',
     'chat.call.camera-off',
     'chat.call.camera-on',
+    'chat.call.switch-camera',
     'chat.call.ended',
     'chat.call.busy',
     'chat.call.declined',

@@ -37,7 +37,7 @@ for (const field of ['main', 'module', 'types', 'typesVersions']) {
     if (field in manifest) failures.push(`package.json still declares "${field}"; the exports map is the only entry`);
 }
 
-for (const peer of ['react-dom', 'react-native', 'livekit-client']) {
+for (const peer of ['react-dom', 'react-native', 'livekit-client', '@livekit/react-native']) {
     if (manifest.peerDependenciesMeta?.[peer]?.optional !== true) failures.push(`${peer} must be an optional peer`);
 }
 
@@ -61,6 +61,7 @@ function nativeImports() {
         }
     };
     walk(resolve('dist/native'));
+    walk(resolve('dist/native-call'));
 
     return [...names];
 }
@@ -82,10 +83,13 @@ function load(entry, { blocked, stubNative }) {
         import { registerHooks } from 'node:module';
         const blocked = ${JSON.stringify(blocked)};
         const stub = ${JSON.stringify(stub)};
+        // LiveKit's React Native module needs a phone, like React Native itself; its two names are stood in for.
+        const livekitNative = 'export const AudioSession = {}; export const VideoView = () => null;';
         registerHooks({
             resolve(specifier, context, next) {
                 const name = specifier.startsWith('@') ? specifier.split('/').slice(0, 2).join('/') : specifier.split('/')[0];
                 if (stub.length > 0 && name === 'react-native') return { url: 'data:text/javascript,' + encodeURIComponent(stub), shortCircuit: true };
+                if (stub.length > 0 && name === '@livekit/react-native') return { url: 'data:text/javascript,' + encodeURIComponent(livekitNative), shortCircuit: true };
                 if (blocked.includes(name)) {
                     const error = new Error('Cannot find package ' + name + ' (made unresolvable by verify-package)');
                     error.code = 'ERR_MODULE_NOT_FOUND';
@@ -101,13 +105,26 @@ function load(entry, { blocked, stubNative }) {
     return Number(execFileSync(process.execPath, ['--input-type=module', '-e', hooks], { encoding: 'utf8' }).trim());
 }
 
-// `livekit-client` is an optional peer that only `/web-call` needs: blocked everywhere else, so an app that never
-// calls never has to install it.
+// `livekit-client` and `@livekit/react-native` are optional peers only the call entry points need: blocked
+// everywhere else, so an app that never calls never has to install them.
 const checks = [
-    { entry: 'dist/index.js', blocked: ['react-dom', 'react-native', 'livekit-client'], stubNative: false },
-    { entry: 'dist/web/index.js', blocked: ['react-native', 'livekit-client'], stubNative: false },
-    { entry: 'dist/web-call/index.js', blocked: ['react-native'], stubNative: false },
-    { entry: 'dist/native/index.js', blocked: ['react-dom', 'livekit-client'], stubNative: true },
+    {
+        entry: 'dist/index.js',
+        blocked: ['react-dom', 'react-native', 'livekit-client', '@livekit/react-native'],
+        stubNative: false,
+    },
+    {
+        entry: 'dist/web/index.js',
+        blocked: ['react-native', 'livekit-client', '@livekit/react-native'],
+        stubNative: false,
+    },
+    { entry: 'dist/web-call/index.js', blocked: ['react-native', '@livekit/react-native'], stubNative: false },
+    {
+        entry: 'dist/native/index.js',
+        blocked: ['react-dom', 'livekit-client', '@livekit/react-native'],
+        stubNative: true,
+    },
+    { entry: 'dist/native-call/index.js', blocked: ['react-dom'], stubNative: true },
 ];
 
 for (const check of checks) {
