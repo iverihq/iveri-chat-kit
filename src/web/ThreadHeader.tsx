@@ -1,8 +1,8 @@
-import { ChatConversationKind } from '@iveri/contracts/chat';
+import { ChatCallKind, ChatConversationKind } from '@iveri/contracts/chat';
 import type { ChatConversation } from '@iveri/contracts/chat';
 import { useState } from 'react';
 
-import { useChatContext, useChatText, useNow } from '../provider/index.js';
+import { useChatCallController, useChatContext, useChatText, useNow } from '../provider/index.js';
 import { useBlockChange, useBlocks, useChatProfile } from '../query/index.js';
 import { conversationHeading, formatLastActive } from '../util/index.js';
 
@@ -10,7 +10,7 @@ import { ChatAvatar } from './ChatAvatar.js';
 import type { ChatMenuItem } from './ChatMenu.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
 import { ConversationMenu } from './ConversationMenu.js';
-import { BackIcon, BlockIcon, FlagIcon } from './icons.js';
+import { BackIcon, BlockIcon, FlagIcon, PhoneIcon, VideoIcon } from './icons.js';
 import { ReportDialog } from './ReportDialog.js';
 import { cn, FOCUS_RING, ICON_BUTTON } from './style.js';
 
@@ -42,6 +42,9 @@ export function ThreadHeader({
     const { translate, locale, timeZone } = useChatContext();
     const now = useNow();
     const profile = useChatProfile();
+    const calls = useChatCallController();
+    // Only where a call layer is mounted and the server says this conversation takes calls now.
+    const showsCalls = calls !== null && conversation.canCall && calls.activeCallId === null;
     const isNetworkDirect = conversation.kind === ChatConversationKind.DIRECT && profile.data?.isNetwork === true;
     const blocks = useBlocks({ enabled: isNetworkDirect });
     const blockChange = useBlockChange();
@@ -127,6 +130,30 @@ export function ThreadHeader({
                 >
                     {identity}
                 </button>
+            )}
+            {showsCalls && (
+                <>
+                    <button
+                        type="button"
+                        aria-label={t('chat.call.start-voice')}
+                        onClick={() => {
+                            calls.startCall(conversation.id, ChatCallKind.VOICE);
+                        }}
+                        className={ICON_BUTTON}
+                    >
+                        <PhoneIcon />
+                    </button>
+                    <button
+                        type="button"
+                        aria-label={t('chat.call.start-video')}
+                        onClick={() => {
+                            calls.startCall(conversation.id, ChatCallKind.VIDEO);
+                        }}
+                        className={ICON_BUTTON}
+                    >
+                        <VideoIcon />
+                    </button>
+                </>
             )}
             <ConversationMenu
                 conversation={conversation}

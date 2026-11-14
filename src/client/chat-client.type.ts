@@ -5,9 +5,12 @@ import type {
     AddChatMembersRequest,
     ChatAttachment,
     ChatBlock,
+    ChatCall,
+    ChatCallJoin,
     ChatContact,
     ChatConversation,
     ChatConversationSummary,
+    ChatCurrentCall,
     ChatInboxFolder,
     ChatInboxPage,
     ChatInvitationPreview,
@@ -25,6 +28,7 @@ import type {
     ReactToChatMessageRequest,
     RegisterChatDeviceRequest,
     SendChatMessageRequest,
+    StartChatCallRequest,
     StartDirectChatRequest,
     UpdateChatMemberRequest,
     UpdateChatProfileRequest,
@@ -178,4 +182,18 @@ export interface ChatClient {
     ): Promise<ChatAttachment>;
 
     report(body: CreateChatReportRequest): Promise<void>;
+
+    /** Rings the other person of a conversation of two. Join it next with `joinCall`. */
+    startCall(conversationId: UUID, body: StartChatCallRequest): Promise<ChatCall>;
+    getCall(callId: UUID, options?: ChatRequestOptions): Promise<ChatCall>;
+    getCurrentCall(conversationId: UUID, options?: ChatRequestOptions): Promise<ChatCurrentCall>;
+    /** The calls ringing for me now, which is what is polled while the socket is down. */
+    listIncomingCalls(options?: ChatRequestOptions): Promise<ChatCall[]>;
+    /** Answers a ringing call with what connects to it. */
+    acceptCall(callId: UUID): Promise<ChatCallJoin>;
+    /** A fresh token for a call I am in: the caller connecting, or anybody reconnecting. */
+    joinCall(callId: UUID): Promise<ChatCallJoin>;
+    declineCall(callId: UUID): Promise<ChatCall>;
+    /** Hangs up: cancels before an answer, ends it for both after. */
+    endCall(callId: UUID): Promise<ChatCall>;
 }

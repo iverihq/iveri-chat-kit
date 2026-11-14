@@ -4,7 +4,7 @@ import { ChatRefusal, ChatReportReason } from '@iveri/contracts/chat';
  * The system notices the kit can draw. A notice is a key and variables, never free text, so every key a
  * server can send has to be here and in the namespace.
  *
- * The first nine are `chat-api`'s own (`SYSTEM_MESSAGE_KEYS` in its `conversation/util`), with the
+ * The first fourteen are `chat-api`'s own (`SYSTEM_MESSAGE_KEYS` in its `conversation/util`), with the
  * variables it writes: `{actor}` who did it, `{name}` who it was done to, `{title}`, and `{role}` as
  * `owner`, `admin` or `member`. The rest are products' notices, posted through the embedding API.
  */
@@ -18,6 +18,11 @@ export const CHAT_SYSTEM_MESSAGE_KEYS = [
     'chat.system.member-removed',
     'chat.system.member-left',
     'chat.system.member-role-changed',
+    'chat.system.call-ended',
+    'chat.system.call-missed',
+    'chat.system.call-declined',
+    'chat.system.call-busy',
+    'chat.system.call-failed',
     'chat.system.taxi-driver-arriving',
     'chat.system.taxi-ride-started',
     'chat.system.taxi-ride-completed',
@@ -67,6 +72,25 @@ export const CHAT_REPORT_REASON_MESSAGE_KEYS = Object.values(ChatReportReason).m
 
 /** Every key the components render directly. Kept in one list so the kit's own spec can hold it to the source. */
 const INTERFACE_KEYS = [
+    'chat.call.start-voice',
+    'chat.call.start-video',
+    'chat.call.incoming',
+    'chat.call.calling',
+    'chat.call.connecting',
+    'chat.call.answer',
+    'chat.call.decline',
+    'chat.call.hang-up',
+    'chat.call.mute',
+    'chat.call.unmute',
+    'chat.call.camera-off',
+    'chat.call.camera-on',
+    'chat.call.ended',
+    'chat.call.busy',
+    'chat.call.declined',
+    'chat.call.no-answer',
+    'chat.call.failed',
+    'chat.call.permission',
+
     'chat.common.cancel',
     'chat.common.close',
     'chat.common.loading',

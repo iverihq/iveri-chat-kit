@@ -321,3 +321,53 @@ export function ChatBubblesIcon(props: IconProps): React.JSX.Element {
         </Glyph>
     );
 }
+
+export function PhoneIcon(props: IconProps): React.JSX.Element {
+    return (
+        <Glyph {...props}>
+            <path d="M5.2 3h2.3l1.2 3.4-1.6 1.1a9 9 0 0 0 4.4 4.4l1.1-1.6 3.4 1.2v2.3A1.7 1.7 0 0 1 14.3 15.5 11.6 11.6 0 0 1 4.5 5.7 1.7 1.7 0 0 1 5.2 3Z" />
+        </Glyph>
+    );
+}
+
+export function HangUpIcon(props: IconProps): React.JSX.Element {
+    return (
+        <Glyph {...props}>
+            <path d="M2.5 11.6c4.3-3.6 10.7-3.6 15 0l-1.3 2.2-3-1v-2a8.6 8.6 0 0 0-6.4 0v2l-3 1Z" />
+        </Glyph>
+    );
+}
+
+export function VideoIcon(props: IconProps): React.JSX.Element {
+    return (
+        <Glyph {...props}>
+            <rect x="2.5" y="5.5" width="10.5" height="9" rx="2" />
+            <path d="m13 8.7 4.5-2.4v7.4L13 11.3" />
+        </Glyph>
+    );
+}
+
+export function VideoOffIcon(props: IconProps): React.JSX.Element {
+    return (
+        <Glyph {...props}>
+            <path d="M13 11.3l4.5 2.4V6.3L13 8.7M13 13V7.5a2 2 0 0 0-2-2H7.5M4.3 5.6A2 2 0 0 0 2.5 7.5v5a2 2 0 0 0 2 2H11M3 3l14 14" />
+        </Glyph>
+    );
+}
+
+export function MicOffIcon(props: IconProps): React.JSX.Element {
+    return (
+        <Glyph {...props}>
+            <path d="M12.5 8.7V5a2.5 2.5 0 0 0-4.8-1M7.5 7.5V10a2.5 2.5 0 0 0 4.2 1.8M15 10a5 5 0 0 1-1.1 3.1M5 10a5 5 0 0 0 8 4M10 15v2.5M3 3l14 14" />
+        </Glyph>
+    );
+}
+
+export function SwitchCameraIcon(props: IconProps): React.JSX.Element {
+    return (
+        <Glyph {...props}>
+            <path d="M3 7.5a2 2 0 0 1 2-2h1.5L8 3.5h4l1.5 2H15a2 2 0 0 1 2 2V14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
+            <path d="m8 10.5-1.3 1.3L8 13M12 10.5l1.3-1.3L12 7.9M6.7 11.8h3.8a2 2 0 0 0 2-2.6" />
+        </Glyph>
+    );
+}

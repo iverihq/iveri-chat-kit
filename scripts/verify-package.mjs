@@ -37,7 +37,7 @@ for (const field of ['main', 'module', 'types', 'typesVersions']) {
     if (field in manifest) failures.push(`package.json still declares "${field}"; the exports map is the only entry`);
 }
 
-for (const peer of ['react-dom', 'react-native']) {
+for (const peer of ['react-dom', 'react-native', 'livekit-client']) {
     if (manifest.peerDependenciesMeta?.[peer]?.optional !== true) failures.push(`${peer} must be an optional peer`);
 }
 
@@ -101,10 +101,13 @@ function load(entry, { blocked, stubNative }) {
     return Number(execFileSync(process.execPath, ['--input-type=module', '-e', hooks], { encoding: 'utf8' }).trim());
 }
 
+// `livekit-client` is an optional peer that only `/web-call` needs: blocked everywhere else, so an app that never
+// calls never has to install it.
 const checks = [
-    { entry: 'dist/index.js', blocked: ['react-dom', 'react-native'], stubNative: false },
-    { entry: 'dist/web/index.js', blocked: ['react-native'], stubNative: false },
-    { entry: 'dist/native/index.js', blocked: ['react-dom'], stubNative: true },
+    { entry: 'dist/index.js', blocked: ['react-dom', 'react-native', 'livekit-client'], stubNative: false },
+    { entry: 'dist/web/index.js', blocked: ['react-native', 'livekit-client'], stubNative: false },
+    { entry: 'dist/web-call/index.js', blocked: ['react-native'], stubNative: false },
+    { entry: 'dist/native/index.js', blocked: ['react-dom', 'livekit-client'], stubNative: true },
 ];
 
 for (const check of checks) {
@@ -123,9 +126,11 @@ for (const check of checks) {
 
 /** The stylesheet points Tailwind at the built components; a wrong path ships a half-styled chat. */
 const css = readFileSync(resolve('styles/web.css'), 'utf8');
-const source = /@source '([^']+)'/u.exec(css)?.[1];
-if (source === undefined || !existsSync(resolve('styles', source))) {
-    failures.push(`styles/web.css @source does not point at the built web components`);
+const sources = [...css.matchAll(/@source '([^']+)'/gu)].map((match) => match[1]);
+for (const entry of ['../dist/web', '../dist/web-call']) {
+    if (!sources.includes(entry) || !existsSync(resolve('styles', entry))) {
+        failures.push(`styles/web.css has no @source for the built ${entry.replace('../dist/', '/')} components`);
+    }
 }
 
 if (failures.length > 0) {

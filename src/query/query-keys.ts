@@ -31,4 +31,8 @@ export const chatQueryKeys = {
     blocks: () => [ROOT, 'blocks'] as const,
     invitation: (code: string) => [ROOT, 'invitation', code] as const,
     messageSearch: (query: string) => [ROOT, 'message-search', query] as const,
+    calls: () => [ROOT, 'call'] as const,
+    call: (callId: UUID) => [ROOT, 'call', callId] as const,
+    currentCall: (conversationId: UUID) => [ROOT, 'call', 'current', conversationId] as const,
+    incomingCalls: () => [ROOT, 'call', 'incoming'] as const,
 };

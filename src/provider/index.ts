@@ -1,3 +1,4 @@
+export * from './call-controller.js';
 export * from './ChatProvider.js';
 export * from './chat-context.js';
 export * from './pending-store.js';

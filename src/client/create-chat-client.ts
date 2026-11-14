@@ -261,5 +261,14 @@ export function createChatClient(options: ChatClientOptions): ChatClient {
         },
 
         report: (body) => request({ method: 'POST', path: '/reports', body }),
+
+        startCall: (id, body) => request({ method: 'POST', path: `/conversations/${encode(id)}/calls`, body }),
+        getCall: (id, opts) => get(`/calls/${encode(id)}`, undefined, opts),
+        getCurrentCall: (id, opts) => get(`/conversations/${encode(id)}/calls/current`, undefined, opts),
+        listIncomingCalls: (opts) => get('/me/calls/incoming', undefined, opts),
+        acceptCall: (id) => request({ method: 'POST', path: `/calls/${encode(id)}/accept` }),
+        joinCall: (id) => request({ method: 'POST', path: `/calls/${encode(id)}/join` }),
+        declineCall: (id) => request({ method: 'POST', path: `/calls/${encode(id)}/decline` }),
+        endCall: (id) => request({ method: 'POST', path: `/calls/${encode(id)}/end` }),
     };
 }

@@ -381,6 +381,35 @@ describe('applyRealtimeFrame', () => {
         expect(queryClient.getQueryState(chatQueryKeys.profile())?.isInvalidated).toBe(false);
     });
 
+    it('looks again at every call query on a call frame, and at nothing else', async () => {
+        const queryClient = new QueryClient();
+        const call = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+        for (const key of [
+            chatQueryKeys.call(call),
+            chatQueryKeys.currentCall(CONVERSATION),
+            chatQueryKeys.incomingCalls(),
+            chatQueryKeys.messages(CONVERSATION),
+        ]) {
+            queryClient.setQueryData(key, {});
+        }
+
+        await applyRealtimeFrame(
+            {
+                event: ChatRealtimeEvent.CALL_UPDATED,
+                conversationId: CONVERSATION,
+                seq: null,
+                userId: null,
+                callId: call,
+            },
+            { queryClient, typing: new ChatTypingStore() },
+        );
+
+        expect(queryClient.getQueryState(chatQueryKeys.call(call as never))?.isInvalidated).toBe(true);
+        expect(queryClient.getQueryState(chatQueryKeys.currentCall(CONVERSATION))?.isInvalidated).toBe(true);
+        expect(queryClient.getQueryState(chatQueryKeys.incomingCalls())?.isInvalidated).toBe(true);
+        expect(queryClient.getQueryState(chatQueryKeys.messages(CONVERSATION))?.isInvalidated).toBe(false);
+    });
+
     it('puts a typing frame in the typing line', async () => {
         const typing = new ChatTypingStore();
         await applyRealtimeFrame(

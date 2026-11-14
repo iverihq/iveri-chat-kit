@@ -16,6 +16,8 @@ export const CHAT_POLL_INTERVAL_MS = {
     conversationWithoutSocket: 5_000,
     inboxWithoutSocket: 15_000,
     withSocket: 30_000,
+    /** A call rings for 45 seconds, so a ring found by the poll alone must still be found in time to answer. */
+    incomingCallsWithoutSocket: 4_000,
 } as const;
 
 export function conversationPollInterval(status: ChatRealtimeStatus): number {
@@ -24,4 +26,8 @@ export function conversationPollInterval(status: ChatRealtimeStatus): number {
 
 export function inboxPollInterval(status: ChatRealtimeStatus): number {
     return status === 'connected' ? CHAT_POLL_INTERVAL_MS.withSocket : CHAT_POLL_INTERVAL_MS.inboxWithoutSocket;
+}
+
+export function incomingCallsPollInterval(status: ChatRealtimeStatus): number {
+    return status === 'connected' ? CHAT_POLL_INTERVAL_MS.withSocket : CHAT_POLL_INTERVAL_MS.incomingCallsWithoutSocket;
 }
