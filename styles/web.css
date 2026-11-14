@@ -18,6 +18,8 @@
  * so an app never has to know where the package keeps its build. Without it every class the kit uses
  * that the app does not happen to use too would be missing, and the chat would arrive half-styled. */
 @source '../dist/web';
+/* The call screens are their own entry point, so they need scanning too. */
+@source '../dist/web-call';
 
 @theme {
     /* The three dots of the typing line, rising one after another. A slow, small movement, and only

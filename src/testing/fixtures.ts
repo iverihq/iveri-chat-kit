@@ -64,6 +64,7 @@ export function conversation(overrides: Partial<ChatConversation> = {}): ChatCon
         isArchived: false,
         canSend: true,
         refusal: null,
+        canCall: false,
         updatedAt: '2026-11-11T10:00:00.000Z',
         participants: [participant({ userId: ME, displayName: 'Me', handle: 'me', isMe: true }), participant()],
         myRole: ChatParticipantRole.MEMBER,

@@ -1,6 +1,7 @@
 export * from './cache.js';
 export * from './query-keys.js';
 export * from './use-attachments.js';
+export * from './use-calls.js';
 export * from './use-conversation-settings.js';
 export * from './use-debounced-value.js';
 export * from './use-group.js';

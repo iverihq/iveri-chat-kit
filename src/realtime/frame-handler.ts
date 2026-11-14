@@ -36,6 +36,7 @@ async function invalidateConversation(queryClient: QueryClient, conversationId: 
  *   (another participant's read state moves the ticks), and every inbox.
  * - `inbox.updated` → every inbox, and the conversation's detail when one is named (my read state,
  *   moved by another of my devices).
+ * - `call.updated` → every call query: the call, a conversation's current call, what is ringing for me.
  * - `conversation.typing` → the typing line. My own devices' frames are stored too and filtered where
  *   the line is read (`useTypingPeople`), which is the one place that knows who "me" is right now.
  */
@@ -61,6 +62,12 @@ export async function applyRealtimeFrame(frame: ChatRealtimeFrame, context: Fram
 
             return;
         }
+        case ChatRealtimeEvent.CALL_UPDATED: {
+            // Every call query: the one named, the conversation's current call and what is ringing for me.
+            await queryClient.invalidateQueries({ queryKey: chatQueryKeys.calls() });
+
+            return;
+        }
         case ChatRealtimeEvent.CONVERSATION_TYPING: {
             if (frame.conversationId === null || frame.userId === null) return;
             context.typing.add(frame.conversationId, frame.userId);
@@ -76,5 +83,6 @@ export async function recoverAfterConnect(queryClient: QueryClient): Promise<voi
         queryClient.invalidateQueries({ queryKey: chatQueryKeys.inboxes() }),
         queryClient.invalidateQueries({ queryKey: [chatQueryKeys.all[0], 'messages'] }),
         queryClient.invalidateQueries({ queryKey: chatQueryKeys.conversations() }),
+        queryClient.invalidateQueries({ queryKey: chatQueryKeys.calls() }),
     ]);
 }

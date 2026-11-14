@@ -1,4 +1,5 @@
 export * from './calendar.js';
+export * from './call.js';
 export * from './excerpt.js';
 export * from './format-number.js';
 export * from './linkify.js';

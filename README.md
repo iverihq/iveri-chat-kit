@@ -255,6 +255,35 @@ control. On the **web build** of the native components a browser cannot upload R
 where a phone uses a long press. `resolveFontFamily` carries the app's `AppText` rule, because React Native has no per-glyph fallback and
 Georgian needs Noto.
 
+## Calls
+
+Voice and video between the two people of a conversation, carried by Baasi's own LiveKit server
+(`iveri-infra/docs/baasi-calls-plan.md`). The web screens are their own entry point, `@iveri/chat-kit/web-call`, because
+they need `livekit-client` (an optional peer) and nothing else in the kit does:
+
+```tsx
+import { ChatCallLayer } from '@iveri/chat-kit/web-call';
+
+<ChatProvider client={client} /* … */>
+    <ChatCallLayer>
+        <App />
+    </ChatCallLayer>
+</ChatProvider>;
+```
+
+- **Mount `ChatCallLayer` once, around the app.** It hears calls ringing for this person (a `chat.call.updated` frame, or
+  `GET /me/calls/incoming` every four seconds while the socket is down), shows who is calling with Answer and Decline,
+  and carries the one call under way on a screen over the app.
+- **A thread draws Call and Video call only inside a layer**, and only when the server's `canCall` says so: a group, a
+  request, a block or a product that does not allow calls draws no button. Without a layer nothing changes.
+- **The kit never decides how a call ended.** Leaving the room only leaves it; `chat-api` hears it from LiveKit and the
+  screen reads the call. The headless rules are `callPhase`, `callEndLine` and `formatCallClock`, and the hooks are
+  `useIncomingCalls`, `useCall`, `useCurrentCall` and `useCallActions`, for an app drawing its own screen.
+- **No string says a call is encrypted, secure or private**: like messages, calls pass through Iveri's servers and are
+  not end-to-end encrypted.
+- **Not in the kit yet**: the phone's call screen, which needs a development build with LiveKit's React Native module,
+  CallKit and Android's ConnectionService, and a real phone to prove.
+
 ## Developing
 
 ```sh
