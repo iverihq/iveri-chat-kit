@@ -293,13 +293,15 @@ export function MessageBubble({
                     <div
                         ref={toolbar}
                         className={cn(
-                            'absolute z-20 transition-opacity duration-fast',
+                            // Raised while in use: the toolbar is its own stacking context (it is translated), so an
+                            // open menu or picker would otherwise sit under the next message's toolbar.
+                            'absolute z-20 transition-opacity duration-fast focus-within:z-30 [@media(hover:hover)]:group-hover/message:z-30',
                             toolbarSide === 'beside' &&
                                 cn('top-1/2 -translate-y-1/2', isOwn ? 'end-full pe-2' : 'start-full ps-2'),
                             toolbarSide === 'above' && cn('bottom-full pb-1', isOwn ? 'end-0' : 'start-0'),
                             toolbarSide === 'below' && cn('top-full pt-1', isOwn ? 'end-0' : 'start-0'),
                             isMenuOpen
-                                ? 'opacity-100'
+                                ? 'z-30 opacity-100'
                                 : 'pointer-events-none opacity-0 group-focus-within/message:pointer-events-auto group-focus-within/message:opacity-100 [@media(hover:hover)]:group-hover/message:pointer-events-auto [@media(hover:hover)]:group-hover/message:opacity-100',
                         )}
                     >
