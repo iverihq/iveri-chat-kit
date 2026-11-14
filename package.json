@@ -65,7 +65,7 @@
     "socket.io-client": "^4.8.4"
   },
   "peerDependencies": {
-    "@iveri/contracts": ">=0.98.0",
+    "@iveri/contracts": ">=0.99.0",
     "@tanstack/react-query": "^5.0.0",
     "livekit-client": "^2.20.0",
     "react": "^19.0.0",
@@ -87,7 +87,7 @@
     }
   },
   "devDependencies": {
-    "@iveri/contracts": "^0.98.0",
+    "@iveri/contracts": "^0.99.0",
     "@iveri/eslint-config": "^0.2.3",
     "@iveri/prettier-config": "^0.1.0",
     "@iveri/react-kit": "^0.13.1",

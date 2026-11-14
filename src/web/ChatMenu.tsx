@@ -1,7 +1,8 @@
 import type { KeyboardEvent, ReactNode } from 'react';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 
 import { MoreIcon } from './icons.js';
+import { fitPopover, type PopoverFit } from './popover-fit.js';
 import { cn, FOCUS_RING, ICON_BUTTON } from './style.js';
 
 export type ChatMenuItem =
@@ -23,7 +24,9 @@ export interface ChatMenuProps {
     items: ChatMenuItem[];
     /** The trigger's face; three dots when absent. */
     icon?: ReactNode;
+    /** Preferred; the menu takes the other side where this one would be cut off by the thread or the window. */
     align?: 'start' | 'end';
+    /** Preferred, as `align` is. */
     placement?: 'below' | 'above';
     triggerClassName?: string;
     /** Opens the menu from outside, for a long press or a right click on the thing it belongs to. */
@@ -52,6 +55,19 @@ export function ChatMenu({
     const wrapper = useRef<HTMLDivElement>(null);
     const trigger = useRef<HTMLButtonElement>(null);
     const list = useRef<HTMLDivElement>(null);
+    const preferred: PopoverFit = { vertical: placement === 'above' ? 'above' : 'below', align };
+    const [fit, setFit] = useState<PopoverFit>(preferred);
+
+    // Measured before the first paint of an open menu, so it never shows cut off and then jumps.
+    useLayoutEffect(() => {
+        if (!isOpen || list.current === null || trigger.current === null) return;
+        const next = fitPopover(
+            trigger.current,
+            { width: list.current.offsetWidth, height: list.current.offsetHeight },
+            { vertical: placement === 'above' ? 'above' : 'below', align },
+        );
+        setFit((current) => (current.vertical === next.vertical && current.align === next.align ? current : next));
+    }, [isOpen, placement, align]);
 
     const setOpen = (next: boolean): void => {
         setUncontrolledOpen(next);
@@ -127,8 +143,8 @@ export function ChatMenu({
                     onKeyDown={onListKeyDown}
                     className={cn(
                         'absolute z-40 min-w-56 animate-scale-in rounded-chat-card border border-chat-line bg-chat-surface p-1.5 shadow-lg',
-                        align === 'end' ? 'end-0' : 'start-0',
-                        placement === 'below' ? 'top-full mt-1.5 origin-top' : 'bottom-full mb-1.5 origin-bottom',
+                        fit.align === 'end' ? 'end-0' : 'start-0',
+                        fit.vertical === 'below' ? 'top-full mt-1.5 origin-top' : 'bottom-full mb-1.5 origin-bottom',
                     )}
                 >
                     {items.map((item) => {

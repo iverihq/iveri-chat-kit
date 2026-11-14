@@ -1,5 +1,5 @@
 import type { Maybe } from '@iveri/contracts';
-import type { ChatAttachment, UploadChatAttachmentFields } from '@iveri/contracts/chat';
+import type { ChatAttachment, ChatTypingRequest, UploadChatAttachmentFields } from '@iveri/contracts/chat';
 
 import { ChatApiError } from './chat-api-error.js';
 import type {
@@ -231,7 +231,12 @@ export function createChatClient(options: ChatClientOptions): ChatClient {
         updateMySettings: (id, body) => request({ method: 'PATCH', path: `/conversations/${encode(id)}/me`, body }),
         accept: (id) => request({ method: 'POST', path: `/conversations/${encode(id)}/accept` }),
         markRead: (id, body) => request({ method: 'POST', path: `/conversations/${encode(id)}/read`, body }),
-        typing: (id) => request({ method: 'POST', path: `/conversations/${encode(id)}/typing` }),
+        typing: (id, isTyping = true) =>
+            request({
+                method: 'POST',
+                path: `/conversations/${encode(id)}/typing`,
+                ...(isTyping ? {} : { body: { isTyping: false } satisfies ChatTypingRequest }),
+            }),
         deleteConversation: (id) => request({ method: 'DELETE', path: `/conversations/${encode(id)}` }),
 
         listMessages: (id, params, opts) =>

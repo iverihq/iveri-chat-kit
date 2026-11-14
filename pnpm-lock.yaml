@@ -177,8 +177,8 @@ importers:
         version: 4.8.4(supports-color@8.1.1)
     devDependencies:
       '@iveri/contracts':
-        specifier: ^0.98.0
-        version: 0.98.0
+        specifier: ^0.99.0
+        version: 0.99.0
       '@iveri/eslint-config':
         specifier: ^0.2.3
         version: 0.2.3(@typescript-eslint/utils@8.72.2(eslint@10.14.0(jiti@2.7.0)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3))(eslint@10.14.0(jiti@2.7.0)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3)
@@ -454,8 +454,8 @@ packages:
     resolution: {integrity: sha512-RQgQ4uQ+pLbqXfOmieB91ejmLwvSgv9nLx6sT6sD83s7umBypgg+OIBOBbEUiJXrfpnp9j0mRhYYdzp9uqq3lA==}
     engines: {node: '>=12'}
 
-  '@iveri/contracts@0.98.0':
-    resolution: {integrity: sha512-pgocSgrQzubMbStrfRVD4pWPVwFcmAE8lgwn5RmP8aYwEFx48EQaTmnBk1J24TCaI+Vwo44qpE1jkE/NiQm3Xw==}
+  '@iveri/contracts@0.99.0':
+    resolution: {integrity: sha512-FW9WQopCleq0OIN/lZk0rkH5Ds656kc5qBu7EVEZJZgtq5/eOiLduxqsnh2PPUY+o8wCxCrXY47cwjLBGeqSfw==}
     engines: {node: '>=26'}
 
   '@iveri/eslint-config@0.2.3':
@@ -3254,7 +3254,7 @@ snapshots:
 
   '@isaacs/ttlcache@1.4.1': {}
 
-  '@iveri/contracts@0.98.0': {}
+  '@iveri/contracts@0.99.0': {}
 
   '@iveri/eslint-config@0.2.3(@typescript-eslint/utils@8.72.2(eslint@10.14.0(jiti@2.7.0)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3))(eslint@10.14.0(jiti@2.7.0)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3)':
     dependencies:

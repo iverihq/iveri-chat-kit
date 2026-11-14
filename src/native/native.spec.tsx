@@ -129,6 +129,43 @@ describe('staying at the newest message', () => {
         expect(await screen.findByText('On my way')).toBeInTheDocument();
         scrollToOffset.mockRestore();
     });
+
+    it('tells the others I stopped when I erase everything and when I send', async () => {
+        const harness = createHarness();
+        harness.stub.on('GET', `/conversations/${CONVERSATION}`, () => ({ body: conversation() }));
+        harness.stub.on('GET', `/conversations/${CONVERSATION}/messages`, () => ({
+            body: { hasOlder: false, lastSeq: 1, messages: [message({ seq: 1 })] },
+        }));
+        harness.stub.on('POST', `/conversations/${CONVERSATION}/messages`, (request) => ({
+            status: 201,
+            body: ownMessage({
+                seq: 2,
+                body: 'Here',
+                clientMessageId: (request.body as SendChatMessageRequest).clientMessageId,
+            }),
+        }));
+        harness.stub.on('POST', `/conversations/${CONVERSATION}/typing`, () => ({ body: { accepted: true } }));
+
+        render(<ChatThreadScreen conversationId={CONVERSATION} />, { wrapper: harness.wrapper });
+        await screen.findByText('Message 1');
+        const field = screen.getByLabelText('chat.composer.label');
+
+        fireEvent.change(field, { target: { value: 'H' } });
+        fireEvent.change(field, { target: { value: '' } });
+        fireEvent.change(field, { target: { value: 'Here' } });
+        await act(async () => {
+            fireEvent.click(screen.getByLabelText('chat.composer.send'));
+            await Promise.resolve();
+        });
+
+        await waitFor(() => {
+            expect(
+                harness.stub.requests
+                    .filter((request) => request.path.endsWith('/typing'))
+                    .map((request) => (request.body as { isTyping?: boolean } | undefined)?.isTyping ?? 'start'),
+            ).toEqual(['start', false, 'start', false]);
+        });
+    });
 });
 
 describe('MessageBubble', () => {

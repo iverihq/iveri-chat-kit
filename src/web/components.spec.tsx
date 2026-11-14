@@ -126,6 +126,33 @@ describe('ChatThread', () => {
         expect(field).toHaveValue('');
     });
 
+    it('tells the others I stopped when I erase everything and when I send, and starts again at once', async () => {
+        const harness = threadHarness();
+        harness.stub.on('GET', `/conversations/${CONVERSATION}/messages`, () => ({
+            body: { hasOlder: false, lastSeq: 0, messages: [] },
+        }));
+        harness.stub.on('POST', `/conversations/${CONVERSATION}/messages`, (request) => ({
+            status: 201,
+            body: ownMessage({ seq: 1, body: (request.body as { body: string }).body }),
+        }));
+        harness.stub.on('POST', `/conversations/${CONVERSATION}/typing`, () => ({ body: { accepted: true } }));
+        const signals = (): unknown[] =>
+            harness.stub.requests
+                .filter((request) => request.path.endsWith('/typing'))
+                .map((request) => (request.body as { isTyping?: boolean } | undefined)?.isTyping ?? 'start');
+
+        render(<ChatThread conversationId={CONVERSATION} />, { wrapper: harness.wrapper });
+        const field = await screen.findByRole('textbox', { name: 'chat.composer.label' });
+
+        await userEvent.type(field, 'ab');
+        await userEvent.clear(field);
+        await userEvent.type(field, 'c{Enter}');
+
+        await waitFor(() => {
+            expect(signals()).toEqual(['start', false, 'start', false]);
+        });
+    });
+
     it('leads a ride’s chat with the other person and their translated label', async () => {
         const harness = threadHarness({
             kind: ChatConversationKind.CONTEXT,
@@ -295,7 +322,7 @@ describe('ChatThread in an embedding', () => {
 });
 
 describe('ChatThread layout', () => {
-    it('anchors the reaction picker on the side with room, and lets the day label scroll with its day', async () => {
+    it('grows the reaction picker toward the bubble, and lets the day label scroll with its day', async () => {
         const harness = threadHarness();
         harness.stub.on('GET', `/conversations/${CONVERSATION}/messages`, () => ({
             body: {
@@ -310,13 +337,49 @@ describe('ChatThread layout', () => {
         await within(log).findByText('Mine');
 
         const [theirs, mine] = within(log).getAllByRole('button', { name: 'chat.reaction.add' });
+        // The toolbar sits beside the bubble, to the right of theirs and to the left of mine, so the picker grows
+        // back over the bubble, where the thread has room.
         await userEvent.click(theirs);
-        expect(within(log).getByRole('group', { name: 'chat.reaction.quick' })).toHaveClass('start-0');
+        expect(within(log).getByRole('group', { name: 'chat.reaction.quick' })).toHaveClass('end-0');
         await userEvent.click(theirs);
         await userEvent.click(mine);
-        expect(within(log).getByRole('group', { name: 'chat.reaction.quick' })).toHaveClass('end-0');
+        expect(within(log).getByRole('group', { name: 'chat.reaction.quick' })).toHaveClass('start-0');
 
         expect(log.querySelector('.sticky')).toBeNull();
+    });
+
+    it('closes the reaction picker on a click outside and on Escape, and never shows it with the menu', async () => {
+        const harness = threadHarness();
+        harness.stub.on('GET', `/conversations/${CONVERSATION}/messages`, () => ({
+            body: { hasOlder: false, lastSeq: 1, messages: [message({ seq: 1, body: 'Theirs' })] },
+        }));
+
+        render(<ChatThread conversationId={CONVERSATION} />, { wrapper: harness.wrapper });
+        const log = await screen.findByRole('log');
+        await within(log).findByText('Theirs');
+        const picker = (): HTMLElement | null => within(log).queryByRole('group', { name: 'chat.reaction.quick' });
+        const react = within(log).getByRole('button', { name: 'chat.reaction.add' });
+        const more = within(log).getByRole('button', { name: 'chat.action.more' });
+
+        await userEvent.click(react);
+        expect(picker()).not.toBeNull();
+        await userEvent.click(within(log).getByText('Theirs'));
+        expect(picker()).toBeNull();
+
+        // Focus is on the button after clicking it, not in the picker, and Escape still closes it.
+        await userEvent.click(react);
+        expect(react).toHaveFocus();
+        await userEvent.keyboard('{Escape}');
+        expect(picker()).toBeNull();
+
+        // One click opens the menu while the picker is open, and the picker goes; the picker then takes the menu's place.
+        await userEvent.click(react);
+        await userEvent.click(more);
+        expect(picker()).toBeNull();
+        expect(screen.getByRole('menu', { name: 'chat.action.more' })).toBeInTheDocument();
+        await userEvent.click(react);
+        expect(picker()).not.toBeNull();
+        expect(screen.queryByRole('menu', { name: 'chat.action.more' })).toBeNull();
     });
 });
 

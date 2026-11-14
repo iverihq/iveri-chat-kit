@@ -160,7 +160,11 @@ export interface ChatClient {
     updateMySettings(conversationId: UUID, body: UpdateMyChatSettingsRequest): Promise<ChatConversationSummary>;
     accept(conversationId: UUID): Promise<ChatConversationSummary>;
     markRead(conversationId: UUID, body: MarkChatReadRequest): Promise<void>;
-    typing(conversationId: UUID): Promise<ChatTypingResponse>;
+    /**
+     * `isTyping: false` says I stopped. A start is sent with no body, which every version of `chat-api` accepts; a
+     * server older than stop frames answers a stop with 400, which costs nothing.
+     */
+    typing(conversationId: UUID, isTyping?: boolean): Promise<ChatTypingResponse>;
     deleteConversation(conversationId: UUID): Promise<void>;
 
     listMessages(
