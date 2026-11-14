@@ -2,6 +2,7 @@ import { ChatConversationKind, ChatMessageKind, ChatParticipantRole, ChatRefusal
 import { describe, expect, it } from 'vitest';
 
 import { ChatApiError } from '../client/index.js';
+import { CHAT_KIT_DEFAULT_CATALOGUE } from '../i18n/index.js';
 import { conversation, keyTranslate, ME, message, NINO, GIORGI, ownMessage, participant } from '../testing/fixtures.js';
 
 import { calendarDaysBetween } from './calendar.js';
@@ -311,6 +312,26 @@ describe('errorText', () => {
         expect(errorText(new ChatApiError({ status: 429, message: 'x' }))).toEqual({ key: 'chat.error.rate-limited' });
         expect(errorText(new Error('boom'))).toEqual({ key: 'chat.error.generic' });
     });
+
+    it('words an app over its plan without the metric or the number chat-api names', () => {
+        const error = ChatApiError.fromResponse(403, {
+            error: {
+                code: 'INSUFFICIENT_PERMISSION',
+                message: 'This app has reached its monthly limit',
+                details: { reason: 'usage-limit-reached', metric: 'chat.messages', limit: 50_000 },
+            },
+        });
+        const text = errorText(error);
+
+        expect(error.refusal).toBe(ChatRefusal.USAGE_LIMIT);
+        expect(text).toEqual({ key: 'chat.refusal.usage-limit-reached' });
+        for (const messages of Object.values(CHAT_KIT_DEFAULT_CATALOGUE.messages)) {
+            const sentence = messages?.[text.key] ?? '';
+
+            expect(sentence).not.toBe('');
+            expect(sentence).not.toMatch(/\d|\{/);
+        }
+    });
 });
 
 describe('canAcceptRequest', () => {
@@ -391,7 +412,14 @@ describe('productText and the heading rule', () => {
 
         // An inbox summary: no participants, the other person named in `other`.
         const { participants: _participants, ...summary } = ride;
-        const other = { userId: GIORGI, displayName: 'Giorgi B.', handle: null, avatar: null, lastActiveAt: null };
+        const other = {
+            userId: GIORGI,
+            externalId: null,
+            displayName: 'Giorgi B.',
+            handle: null,
+            avatar: null,
+            lastActiveAt: null,
+        };
         expect(conversationHeading({ ...summary, other }, t)).toMatchObject({
             title: 'Giorgi B.',
             subtitle: 'Taxi ride',

@@ -10,7 +10,13 @@ export interface ChatMessageText {
     values?: ChatTranslationValues;
 }
 
-/** The key for one refusal, with the numbers its sentence names filled from the contract's own limits. */
+/**
+ * The key for one refusal, with the numbers its sentence names filled from the contract's own limits.
+ *
+ * `usage-limit-reached` comes with the app's `metric` and `limit` in `details`, and neither is passed on:
+ * those are the customer's plan, which is between Baasi and the customer, and a person chatting in their
+ * app is told only that the chat is not taking messages now.
+ */
 export function refusalText(refusal: ChatRefusal): ChatMessageText {
     const key = `chat.refusal.${refusal}` as const;
 

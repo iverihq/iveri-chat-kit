@@ -183,7 +183,14 @@ export function createMemoryClient(copy: GalleryCopy, now: Date): ChatClient {
         conversation({
             id: DIRECT,
             title: copy.nino,
-            other: { userId: NINO, displayName: copy.nino, handle: 'nino', avatar: null, lastActiveAt: at(4) },
+            other: {
+                userId: NINO,
+                externalId: null,
+                displayName: copy.nino,
+                handle: 'nino',
+                avatar: null,
+                lastActiveAt: at(4),
+            },
             participants: [
                 participant({ userId: ME, displayName: copy.me, isMe: true }),
                 participant({ displayName: copy.nino, lastReadSeq: 6, lastActiveAt: at(4) }),
@@ -269,6 +276,7 @@ export function createMemoryClient(copy: GalleryCopy, now: Date): ChatClient {
             title: 'Ana Kapanadze',
             other: {
                 userId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+                externalId: null,
                 displayName: 'Ana Kapanadze',
                 handle: 'ana.k',
                 avatar: null,
@@ -310,6 +318,7 @@ export function createMemoryClient(copy: GalleryCopy, now: Date): ChatClient {
         getProfile: () =>
             ok({
                 userId: ME,
+                externalId: null,
                 isNetwork: true,
                 hasProfile: true,
                 handle: 'me',
