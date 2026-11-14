@@ -281,8 +281,13 @@ import { ChatCallLayer } from '@iveri/chat-kit/web-call';
   `useIncomingCalls`, `useCall`, `useCurrentCall` and `useCallActions`, for an app drawing its own screen.
 - **No string says a call is encrypted, secure or private**: like messages, calls pass through Iveri's servers and are
   not end-to-end encrypted.
-- **Not in the kit yet**: the phone's call screen, which needs a development build with LiveKit's React Native module,
-  CallKit and Android's ConnectionService, and a real phone to prove.
+- **On a phone, `@iveri/chat-kit/native-call`** draws the same: `ChatNativeCallLayer` inside `ChatProvider` and
+  `ChatNativeProvider`, on `@livekit/react-native` (an optional peer, with `@livekit/react-native-webrtc` and
+  `livekit-client`). The app calls `registerGlobals()` from `@livekit/react-native` once at start, needs a development
+  build (not Expo Go) with LiveKit's config plugin, and declares the microphone and camera. **It rings only while the app
+  is open**: a closed phone rings through CallKit or ConnectionService, woken by the VoIP or FCM push `chat-api` sends,
+  which the app wires itself and which needs a real phone to prove.
+- What both layers do is one hook, `useCallSession`: what is ringing, the one call under way, start, answer, decline.
 
 ## Developing
 

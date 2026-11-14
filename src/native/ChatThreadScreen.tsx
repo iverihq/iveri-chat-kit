@@ -1,5 +1,11 @@
 import type { Nullable, UUID } from '@iveri/contracts';
-import { CHAT_QUICK_REACTIONS, ChatParticipantStatus, ChatReportReason, ChatReportTarget } from '@iveri/contracts/chat';
+import {
+    CHAT_QUICK_REACTIONS,
+    ChatCallKind,
+    ChatParticipantStatus,
+    ChatReportReason,
+    ChatReportTarget,
+} from '@iveri/contracts/chat';
 import type { ChatAttachment, ChatMessage } from '@iveri/contracts/chat';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -14,7 +20,7 @@ import {
     View,
 } from 'react-native';
 
-import { useChatContext, useChatRealtime, useChatText, useNow } from '../provider/index.js';
+import { useChatCallController, useChatContext, useChatRealtime, useChatText, useNow } from '../provider/index.js';
 import {
     useConversation,
     useDeleteMessage,
@@ -89,6 +95,7 @@ export function ChatThreadScreen({
     const [sheet, setSheet] = useState<Nullable<Sheet>>(null);
     const [opened, setOpened] = useState<Nullable<{ id: UUID; seq: number }>>(null);
     const data = conversation.data;
+    const calls = useChatCallController();
 
     const list = useRef<FlatList<ChatThreadRow>>(null);
     const atNewest = useRef(true);
@@ -152,6 +159,8 @@ export function ChatThreadScreen({
     }
 
     const heading = conversationHeading(data, translate);
+    // Only inside a call layer, and only when the server says this conversation takes calls now.
+    const showsCalls = calls !== null && data.canCall && calls.activeCallId === null;
     const subtitle =
         heading.subtitle ??
         (data.isGroup
@@ -287,6 +296,29 @@ export function ChatThreadScreen({
                             </ChatText>
                         )}
                     </View>
+                    {showsCalls && (
+                        <View style={styles.callButtons}>
+                            {[ChatCallKind.VOICE, ChatCallKind.VIDEO].map((kind) => (
+                                <Pressable
+                                    key={kind}
+                                    accessibilityRole="button"
+                                    onPress={() => {
+                                        calls.startCall(data.id, kind);
+                                    }}
+                                    hitSlop={6}
+                                    style={[styles.callButton, { borderColor: c.line }]}
+                                >
+                                    <ChatText style={[styles.callButtonText, { color: c.ink }]}>
+                                        {t(
+                                            kind === ChatCallKind.VIDEO
+                                                ? 'chat.call.start-video'
+                                                : 'chat.call.start-voice',
+                                        )}
+                                    </ChatText>
+                                </Pressable>
+                            ))}
+                        </View>
+                    )}
                 </View>
             )}
             <FlatList
@@ -448,6 +480,9 @@ const styles = StyleSheet.create({
     },
     back: { width: 32, alignItems: 'center' },
     headerText: { flex: 1 },
+    callButtons: { flexDirection: 'row', gap: 6 },
+    callButton: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
+    callButtonText: { fontSize: 13, fontWeight: '600' },
     titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     headerTitle: { flexShrink: 1, fontSize: 18, fontWeight: '600' },
     label: {

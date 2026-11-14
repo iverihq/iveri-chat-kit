@@ -5,7 +5,7 @@ import type { ChatCatalogue } from './catalogue.type.js';
 
 export const CHAT_KIT_DEFAULT_CATALOGUE: ChatCatalogue = {
     namespace: 'chat-kit',
-    version: 11,
+    version: 12,
     sourceLocale: 'en',
     messages: {
         en: {
@@ -47,6 +47,7 @@ export const CHAT_KIT_DEFAULT_CATALOGUE: ChatCatalogue = {
                 'Allow the microphone{kind, select, video { and camera} other {}} to make this call',
             'chat.call.start-video': 'Video call',
             'chat.call.start-voice': 'Voice call',
+            'chat.call.switch-camera': 'Switch camera',
             'chat.call.unmute': 'Unmute',
             'chat.common.cancel': 'Cancel',
             'chat.common.close': 'Close',
@@ -354,6 +355,7 @@ export const CHAT_KIT_DEFAULT_CATALOGUE: ChatCatalogue = {
             'chat.call.permission': 'ზარისთვის დაუშვი მიკროფონზე{kind, select, video { და კამერაზე} other {}} წვდომა',
             'chat.call.start-video': 'ვიდეოზარი',
             'chat.call.start-voice': 'ხმოვანი ზარი',
+            'chat.call.switch-camera': 'კამერის შეცვლა',
             'chat.call.unmute': 'მიკროფონის ჩართვა',
             'chat.common.cancel': 'გაუქმება',
             'chat.common.close': 'დახურვა',
@@ -660,6 +662,7 @@ export const CHAT_KIT_DEFAULT_CATALOGUE: ChatCatalogue = {
                 'Разрешите доступ к микрофону{kind, select, video { и камере} other {}}, чтобы позвонить',
             'chat.call.start-video': 'Видеозвонок',
             'chat.call.start-voice': 'Голосовой звонок',
+            'chat.call.switch-camera': 'Сменить камеру',
             'chat.call.unmute': 'Включить микрофон',
             'chat.common.cancel': 'Отмена',
             'chat.common.close': 'Закрыть',
