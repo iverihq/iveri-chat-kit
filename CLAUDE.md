@@ -47,3 +47,11 @@ The namespace check in `src/i18n/catalog.spec.ts` runs only where `iveri-infra` 
 
 `scripts/verify-package.mjs` loads every entry point in a separate Node process with the peers it must not need made
 unresolvable. A check that cannot fail proves nothing: blocking `react-dom` does make `/web` fail, which was tried.
+
+## Headings wrap; previews are cut (2026-11-20)
+
+The thread header's name and status line, a dialog's title and the details panel's heading wrap between words (at most
+two lines for the name, which carries the full text in `title`). They were cut with an ellipsis, so a Georgian surname
+and "was active 19 min ago" in Georgian ended mid-word, and a Georgian word cut short reads as a different word. A row's
+message preview, a file's name over its picture and a person's name in a picker list stay on one line: a preview is a
+fragment by nature, and those rows are scanned rather than read.

@@ -90,7 +90,10 @@ export function ThreadHeader({
             <ChatAvatar name={heading.title} image={heading.avatar} size="sm" className="h-10 w-10" />
             <span className="flex min-w-0 flex-1 flex-col">
                 <span className="flex min-w-0 items-center gap-2">
-                    <span className="truncate font-chat-display text-h3 font-semibold text-chat-ink">
+                    <span
+                        title={heading.title}
+                        className="line-clamp-2 min-w-0 [overflow-wrap:break-word] hyphens-auto leading-tight font-chat-display text-h3 font-semibold text-chat-ink"
+                    >
                         {heading.title}
                     </span>
                     {heading.label !== null && (
@@ -99,7 +102,11 @@ export function ThreadHeader({
                         </span>
                     )}
                 </span>
-                {subtitle !== null && <span className="truncate text-caption text-chat-muted">{subtitle}</span>}
+                {subtitle !== null && (
+                    <span className="[overflow-wrap:break-word] hyphens-auto leading-tight text-caption text-chat-muted">
+                        {subtitle}
+                    </span>
+                )}
             </span>
         </>
     );

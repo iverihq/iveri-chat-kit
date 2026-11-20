@@ -116,7 +116,10 @@ export function ChatDialog({
                         <h2
                             id={titleId}
                             className={cn(
-                                'min-w-0 flex-1 truncate font-chat-display text-h3 font-semibold',
+                                'min-w-0 flex-1 font-chat-display text-h3 font-semibold',
+                                // A file's name over its picture stays on one line; a heading in words wraps, because a
+                                // Georgian or Russian word cut short reads as a different word.
+                                isMedia ? 'truncate' : '[overflow-wrap:break-word] hyphens-auto leading-tight',
                                 hideTitle && 'sr-only',
                                 isMedia && 'text-body font-medium text-white/90',
                             )}

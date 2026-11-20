@@ -185,7 +185,7 @@ export function GroupInfo({
     return (
         <aside className="flex h-full min-h-0 flex-col bg-chat-surface">
             <div className="flex items-center gap-2 border-b border-chat-line px-4 py-3">
-                <h2 className="min-w-0 flex-1 truncate font-chat-display text-h3 font-semibold text-chat-ink">
+                <h2 className="min-w-0 flex-1 [overflow-wrap:break-word] hyphens-auto leading-tight font-chat-display text-h3 font-semibold text-chat-ink">
                     {isGroup ? t('chat.group.title') : t('chat.action.details')}
                 </h2>
                 {onClose !== undefined && (
