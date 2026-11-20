@@ -1,4 +1,10 @@
-import { ChatCallKind, ChatCallParticipantState, ChatCallStatus, type ChatCall } from '@iveri/contracts/chat';
+import {
+    ChatCallKind,
+    ChatCallParticipantState,
+    ChatCallStatus,
+    ChatConversationKind,
+    type ChatCall,
+} from '@iveri/contracts/chat';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -155,5 +161,56 @@ describe('ChatNativeCallLayer', () => {
         });
         expect(rooms.sessions).toBe(1);
         expect(await screen.findByLabelText('chat.call.hang-up')).toBeInTheDocument();
+    });
+
+    it('shows a group call going on in the thread, and joining it opens the group screen', async () => {
+        const harness = createHarness();
+        const group = call({
+            isGroup: true,
+            title: 'Weekend',
+            maxParticipants: 32,
+            status: ChatCallStatus.ACTIVE,
+            answeredAt: '2026-11-14T10:00:05.000Z',
+        });
+        const inIt = {
+            ...group,
+            participants: group.participants.map((p) => ({ ...p, state: ChatCallParticipantState.JOINED })),
+        };
+        harness.stub.on('GET', `/conversations/${CONVERSATION}`, () => ({
+            body: conversation({
+                kind: ChatConversationKind.GROUP,
+                isGroup: true,
+                title: 'Weekend',
+                other: null,
+                canCall: true,
+                participants: [participant({ userId: ME, isMe: true }), participant({ userId: OTHER })],
+            }),
+        }));
+        harness.stub.on('GET', `/conversations/${CONVERSATION}/messages`, () => ({
+            body: { hasOlder: false, lastSeq: 0, messages: [] },
+        }));
+        harness.stub.on('GET', '/me/calls/incoming', () => ({ body: [] }));
+        harness.stub.on('GET', `/conversations/${CONVERSATION}/calls/current`, () => ({ body: { call: group } }));
+        harness.stub.on('POST', `/calls/${CALL}/join`, () => ({
+            body: { call: inIt, url: 'ws://livekit.test', token: 'token-g', expiresAt: '2026-11-14T10:10:00Z' },
+        }));
+        harness.stub.on('GET', `/calls/${CALL}`, () => ({ body: inIt }));
+
+        render(
+            <ChatNativeProvider capabilities={{}}>
+                <ChatNativeCallLayer>
+                    <ChatThreadScreen conversationId={CONVERSATION} />
+                </ChatNativeCallLayer>
+            </ChatNativeProvider>,
+            { wrapper: harness.wrapper },
+        );
+
+        expect(await screen.findByText('chat.call.in-progress {"kind":"voice"}')).toBeInTheDocument();
+        fireEvent.click(screen.getByText('chat.call.join'));
+
+        await waitFor(() => {
+            expect(rooms.connected).toEqual([{ url: 'ws://livekit.test', token: 'token-g' }]);
+        });
+        expect(await screen.findByLabelText('chat.call.leave')).toBeInTheDocument();
     });
 });

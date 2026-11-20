@@ -46,9 +46,7 @@ export function CallBanner({ conversationId }: Readonly<CallBannerProps>): React
                     {t('chat.call.in-progress', { kind: current.kind })}
                 </span>
                 <span className="text-caption text-chat-muted">
-                    {isFull
-                        ? t('chat.call.full')
-                        : t('chat.call.people', { count: callPeopleIn(current).length })}
+                    {isFull ? t('chat.call.full') : t('chat.call.people', { count: callPeopleIn(current).length })}
                 </span>
             </span>
             <button

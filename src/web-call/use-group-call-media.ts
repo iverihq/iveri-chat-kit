@@ -79,7 +79,9 @@ export function useGroupCallMedia(
         const lastSpokeAt = new Map<string, number>();
         const refresh = (): void => {
             if (isLeft()) return;
-            setPeople([...current.remoteParticipants.values()].map((participant) => personOf(participant, lastSpokeAt)));
+            setPeople(
+                [...current.remoteParticipants.values()].map((participant) => personOf(participant, lastSpokeAt)),
+            );
         };
 
         room.current = current;

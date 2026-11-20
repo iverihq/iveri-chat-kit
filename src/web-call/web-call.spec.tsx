@@ -1,5 +1,6 @@
 import {
     ChatCallKind,
+    ChatConversationKind,
     ChatCallParticipantState,
     ChatCallStatus,
     type ChatCall,
@@ -103,18 +104,28 @@ const join = (answer: ChatCall): ChatCallJoin => ({
     expiresAt: '2026-11-14T10:10:00.000Z',
 });
 
-function harness(options: { canCall?: boolean; incoming?: ChatCall[] } = {}): ReturnType<typeof createHarness> {
-    const h = createHarness();
+function harness(
+    options: { canCall?: boolean; incoming?: ChatCall[]; isGroup?: boolean; signedOut?: boolean } = {},
+): ReturnType<typeof createHarness> {
+    // Signed out: the app passes no user, and `GET /me` is refused, as it is without a token.
+    const h = createHarness(options.signedOut === true ? { currentUserId: 'omit' } : {});
     h.stub.on('GET', `/conversations/${CONVERSATION}`, () => ({
         body: conversation({
             canCall: options.canCall ?? true,
+            ...(options.isGroup === true
+                ? { kind: ChatConversationKind.GROUP, isGroup: true, title: 'Weekend', other: null, memberCount: 3 }
+                : {}),
             participants: [participant({ userId: ME, isMe: true }), participant({ userId: OTHER })],
         }),
     }));
     h.stub.on('GET', `/conversations/${CONVERSATION}/messages`, () => ({
         body: { hasOlder: false, lastSeq: 0, messages: [] },
     }));
-    h.stub.on('GET', '/me', () => ({ body: { userId: ME, isNetwork: true } }));
+    h.stub.on('GET', '/me', () =>
+        options.signedOut === true
+            ? { status: 401, body: { error: { code: 'UNAUTHENTICATED' } } }
+            : { body: { userId: ME, isNetwork: true } },
+    );
     h.stub.on('GET', '/blocks', () => ({ body: [] }));
     h.stub.on('GET', '/me/calls/incoming', () => ({ body: options.incoming ?? [] }));
 
@@ -251,6 +262,112 @@ describe('ChatCallLayer', () => {
         await userEvent.click(hangUp);
 
         expect(await screen.findByText('chat.call.ended {"name":"Giorgi"}')).toBeInTheDocument();
+        await waitFor(() => {
+            expect(rooms.left).toBe(1);
+        });
+    });
+
+    it('asks for no ringing call while nobody is signed in', async () => {
+        const h = harness({ signedOut: true });
+
+        render(<ChatCallLayer />, { wrapper: h.wrapper });
+
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        expect(h.stub.requests.some((r) => r.path === '/me/calls/incoming')).toBe(false);
+    });
+});
+
+describe('Group calls', () => {
+    const ANA = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+    const group = (overrides: Partial<ChatCall> = {}, mine: ChatCallParticipantState | null = null): ChatCall => {
+        const base = call({ startedBy: OTHER });
+        const others = [
+            { ...base.participants[1], state: ChatCallParticipantState.JOINED },
+            { ...base.participants[1], userId: ANA, displayName: 'Ana', state: ChatCallParticipantState.JOINED },
+        ];
+
+        return {
+            ...base,
+            isGroup: true,
+            title: 'Weekend',
+            maxParticipants: 3,
+            status: ChatCallStatus.ACTIVE,
+            answeredAt: '2026-11-14T10:00:05.000Z',
+            participants: mine === null ? others : [{ ...base.participants[0], state: mine }, ...others],
+            ...overrides,
+        };
+    };
+
+    const threadInLayer = (h: ReturnType<typeof harness>): void => {
+        render(
+            <ChatCallLayer>
+                <ChatThread conversationId={CONVERSATION} />
+            </ChatCallLayer>,
+            { wrapper: h.wrapper },
+        );
+    };
+
+    it('says which group is calling', async () => {
+        const h = harness({ incoming: [group({}, ChatCallParticipantState.RINGING)] });
+
+        render(<ChatCallLayer />, { wrapper: h.wrapper });
+
+        expect(await screen.findByRole('alertdialog')).toHaveAccessibleName(
+            'chat.call.incoming-group {"kind":"video","name":"Giorgi","title":"Weekend"}',
+        );
+    });
+
+    it('shows a call going on in the group, and joins it into the group screen', async () => {
+        const h = harness({ isGroup: true });
+        const inIt = group({}, ChatCallParticipantState.JOINED);
+        h.stub.on('GET', `/conversations/${CONVERSATION}/calls/current`, () => ({ body: { call: group() } }));
+        h.stub.on('POST', `/calls/${CALL}/join`, () => ({ body: join(inIt) }));
+        h.stub.on('GET', `/calls/${CALL}`, () => ({ body: inIt }));
+        threadInLayer(h);
+
+        const banner = await screen.findByRole('status');
+        expect(within(banner).getByText('chat.call.in-progress {"kind":"video"}')).toBeInTheDocument();
+        expect(within(banner).getByText('chat.call.people {"count":2}')).toBeInTheDocument();
+
+        await userEvent.click(within(banner).getByRole('button', { name: 'chat.call.join' }));
+
+        expect(await screen.findByRole('dialog', { name: 'Weekend' })).toBeInTheDocument();
+        await waitFor(() => {
+            expect(rooms.connected).toEqual([{ url: 'ws://livekit.test', token: `token-for-${CALL}` }]);
+        });
+        expect(screen.getByRole('button', { name: 'chat.call.leave' })).toBeInTheDocument();
+    });
+
+    it('says a full call is full and offers no join', async () => {
+        const h = harness({ isGroup: true });
+        h.stub.on('GET', `/conversations/${CONVERSATION}/calls/current`, () => ({
+            body: { call: group({ maxParticipants: 2 }) },
+        }));
+        threadInLayer(h);
+
+        const banner = await screen.findByRole('status');
+        expect(within(banner).getByText('chat.call.full')).toBeInTheDocument();
+        expect(within(banner).getByRole('button', { name: 'chat.call.join' })).toBeDisabled();
+    });
+
+    it('leaves, and the screen goes at once while the others carry on', async () => {
+        const h = harness({ isGroup: true });
+        const inIt = group({}, ChatCallParticipantState.JOINED);
+        h.stub.on('GET', `/conversations/${CONVERSATION}/calls/current`, () => ({ body: { call: group() } }));
+        h.stub.on('POST', `/calls/${CALL}/join`, () => ({ body: join(inIt) }));
+        h.stub.on('GET', `/calls/${CALL}`, () => ({ body: inIt }));
+        h.stub.on('POST', `/calls/${CALL}/end`, () => ({ body: group({}, ChatCallParticipantState.LEFT) }));
+        threadInLayer(h);
+
+        await userEvent.click(
+            within(await screen.findByRole('status')).getByRole('button', { name: 'chat.call.join' }),
+        );
+        await userEvent.click(await screen.findByRole('button', { name: 'chat.call.leave' }));
+
+        await waitFor(() => {
+            expect(screen.queryByRole('dialog', { name: 'Weekend' })).not.toBeInTheDocument();
+        });
+        expect(h.stub.requests.some((r) => r.method === 'POST' && r.path === `/calls/${CALL}/end`)).toBe(true);
         await waitFor(() => {
             expect(rooms.left).toBe(1);
         });

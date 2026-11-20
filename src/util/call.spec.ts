@@ -181,7 +181,12 @@ describe('orderCallTiles', () => {
     });
 
     it('puts video first, then whoever spoke last, keeping the room’s order otherwise', () => {
-        const { tiles, more } = orderCallTiles([tile('a', false), tile('b', false, 5), tile('c', true), tile('d', false)]);
+        const { tiles, more } = orderCallTiles([
+            tile('a', false),
+            tile('b', false, 5),
+            tile('c', true),
+            tile('d', false),
+        ]);
 
         expect(tiles.map((t) => t.identity)).toEqual(['c', 'b', 'a', 'd']);
         expect(more).toBe(0);

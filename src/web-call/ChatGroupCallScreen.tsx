@@ -183,7 +183,9 @@ export function ChatGroupCallScreen({
                         </ul>
                     )}
                     {more > 0 && phase !== 'ended' && (
-                        <p className="mt-3 text-center text-label text-white/80">{t('chat.call.more', { count: more })}</p>
+                        <p className="mt-3 text-center text-label text-white/80">
+                            {t('chat.call.more', { count: more })}
+                        </p>
                     )}
                     {kind === ChatCallKind.VIDEO && (
                         <video
