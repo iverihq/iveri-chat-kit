@@ -278,7 +278,7 @@ describe('ChatCallLayer', () => {
 });
 
 describe('Group calls', () => {
-    const ANA = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+    const ANA = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd' as ChatCall['startedBy'];
     const group = (overrides: Partial<ChatCall> = {}, mine: ChatCallParticipantState | null = null): ChatCall => {
         const base = call({ startedBy: OTHER });
         const others = [

@@ -274,8 +274,16 @@ import { ChatCallLayer } from '@iveri/chat-kit/web-call';
 - **Mount `ChatCallLayer` once, around the app.** It hears calls ringing for this person (a `chat.call.updated` frame, or
   `GET /me/calls/incoming` every four seconds while the socket is down), shows who is calling with Answer and Decline,
   and carries the one call under way on a screen over the app.
-- **A thread draws Call and Video call only inside a layer**, and only when the server's `canCall` says so: a group, a
-  request, a block or a product that does not allow calls draws no button. Without a layer nothing changes.
+- **A thread draws Call and Video call only inside a layer**, and only when the server's `canCall` says so: a request, a
+  block or a product that does not allow calls draws no button. Without a layer nothing changes.
+- **Group calls** (chat-api with `@iveri/contracts` 0.104 or later): a group's thread shows a banner over a call going on
+  there that I am not in, with how many are in it and Join (or that it is full), and pressing Call in a group that
+  already has one joins it. The group screen is a grid of up to eight people (`CHAT_CALL_VIDEO_TILES`: video first,
+  then whoever spoke last, the speaker outlined) and "+N more"; leaving leaves the call to the others. The incoming card
+  says which group is calling. The headless pieces are `callTitle`, `callRingLine`, `callPeopleIn`, `isCallFull` and
+  `orderCallTiles`, and the session's controller has `joinCall`.
+- **Nothing is asked about calls while nobody is signed in** (`currentUserId` null), so a layer mounted before sign-in
+  does not poll `GET /me/calls/incoming` into a 401 every four seconds.
 - **The kit never decides how a call ended.** Leaving the room only leaves it; `chat-api` hears it from LiveKit and the
   screen reads the call. The headless rules are `callPhase`, `callEndLine` and `formatCallClock`, and the hooks are
   `useIncomingCalls`, `useCall`, `useCurrentCall` and `useCallActions`, for an app drawing its own screen.
@@ -287,7 +295,8 @@ import { ChatCallLayer } from '@iveri/chat-kit/web-call';
   build (not Expo Go) with LiveKit's config plugin, and declares the microphone and camera. **It rings only while the app
   is open**: a closed phone rings through CallKit or ConnectionService, woken by the VoIP or FCM push `chat-api` sends,
   which the app wires itself and which needs a real phone to prove.
-- What both layers do is one hook, `useCallSession`: what is ringing, the one call under way, start, answer, decline.
+- What both layers do is one hook, `useCallSession`: what is ringing, the one call under way, start, join, answer,
+  decline.
 
 ## Developing
 

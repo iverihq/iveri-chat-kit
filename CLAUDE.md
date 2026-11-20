@@ -67,3 +67,28 @@ toolbar above the bubble when there is no room beside it, so clipping the thread
 a wide table scrolls inside its panel, and each day's group of messages is exactly that shape. The day group therefore
 scrolled sideways inside a thread that no longer did. It carries `overflow-x-visible` (0.8.3), which beats the theme's
 base layer, so the overflow reaches the thread and is clipped there. The gallery could not show it: it has no `main`.
+
+## Group calls (2026-11-20)
+
+`iveri-infra/docs/baasi-calls-plan.md` phase 2; the rules are chat-api's (its `CLAUDE.md`, "Group calls"), and the kit only
+draws them.
+
+- **One layer, two screens.** `ChatCallLayer` and `ChatNativeCallLayer` read the active call and draw the screen its
+  `isGroup` needs; the 1:1 screens are unchanged. Each group screen has its own media hook (`useGroupCallMedia`,
+  `useNativeGroupCallMedia`), because a room of many plays one `<audio>` per person on the web and hands back a camera
+  track per person; the 1:1 hooks would have grown a branch in every handler.
+- **A group call is live for me once I am connected**, not once somebody else is, so a caller alone sees "Waiting for
+  others to join" rather than "Connecting". `callPhase` reads my own ringing state before the call's status, because a
+  group call somebody else answered is under way and still rings for me; `useCallSession` shows such a ring too.
+- **Tiles: video first, then whoever spoke last, ties in the room's order** (`orderCallTiles`), at most
+  `CHAT_CALL_VIDEO_TILES` = 8 (Roma's number; the room takes up to 32), the rest as "+N more". Ordering by "speaking now"
+  alone made tiles jump on every breath; last-spoke keeps a speaker on screen and still order.
+- **Leaving closes the screen at once** rather than waiting for the call to end, because a group call goes on without me;
+  the media hook is given no join after that, which leaves the room.
+- **The banner over a group's thread** (`CallBanner`, web and native) reads `useCurrentCall`, which chat-api answers to any
+  member of a group, and joins through the controller's `joinCall`. It is drawn only inside a call layer, like the call
+  buttons, and never for the call already on screen.
+- **`useIncomingCalls` is off while `currentUserId` is null.** hr-app and chat-app mount the call layer while signed out
+  (so signing in does not remount the navigator), and the poll otherwise drew a 401 every four seconds.
+- **Not proven in a real room on a phone**: the native grid is checked in `react-native-web` only, and no group call's
+  audio or video has been heard (the browser pane blocks the microphone and camera).
