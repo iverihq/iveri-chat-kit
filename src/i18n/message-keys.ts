@@ -31,6 +31,10 @@ export const CHAT_SYSTEM_MESSAGE_KEYS = [
     'chat.system.delivery-picked-up',
     'chat.system.delivery-in-transit',
     'chat.system.delivery-delivered',
+    'chat.system.order-confirmed',
+    'chat.system.order-shipped',
+    'chat.system.order-fulfilled',
+    'chat.system.order-cancelled',
     'chat.system.closed',
 ] as const;
 
