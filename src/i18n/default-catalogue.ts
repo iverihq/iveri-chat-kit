@@ -5,7 +5,7 @@ import type { ChatCatalogue } from './catalogue.type.js';
 
 export const CHAT_KIT_DEFAULT_CATALOGUE: ChatCatalogue = {
     namespace: 'chat-kit',
-    version: 3,
+    version: 4,
     sourceLocale: 'en',
     messages: {
         en: {
@@ -290,6 +290,10 @@ export const CHAT_KIT_DEFAULT_CATALOGUE: ChatCatalogue = {
             'chat.system.member-removed': '{actor} removed {name}',
             'chat.system.member-role-changed':
                 '{actor} made {name} {role, select, owner {an owner} admin {an admin} other {a member}}',
+            'chat.system.order-cancelled': 'The order has been cancelled',
+            'chat.system.order-confirmed': 'The shop has confirmed the order',
+            'chat.system.order-fulfilled': 'The order is complete',
+            'chat.system.order-shipped': 'The order is on its way',
             'chat.system.taxi-driver-arriving': 'The driver is arriving',
             'chat.system.taxi-ride-completed': 'The ride is complete',
             'chat.system.taxi-ride-started': 'The ride has started',
@@ -601,6 +605,10 @@ export const CHAT_KIT_DEFAULT_CATALOGUE: ChatCatalogue = {
             'chat.system.member-removed': '{actor}-მ ამოშალა {name}',
             'chat.system.member-role-changed':
                 '{actor}-მ {name} დანიშნა {role, select, owner {მფლობელად} admin {ადმინისტრატორად} other {წევრად}}',
+            'chat.system.order-cancelled': 'შეკვეთა გაუქმდა',
+            'chat.system.order-confirmed': 'მაღაზიამ შეკვეთა დაადასტურა',
+            'chat.system.order-fulfilled': 'შეკვეთა შესრულებულია',
+            'chat.system.order-shipped': 'შეკვეთა გზაშია',
             'chat.system.taxi-driver-arriving': 'მძღოლი ახლოვდება',
             'chat.system.taxi-ride-completed': 'მგზავრობა დასრულდა',
             'chat.system.taxi-ride-started': 'მგზავრობა დაიწყო',
@@ -921,6 +929,10 @@ export const CHAT_KIT_DEFAULT_CATALOGUE: ChatCatalogue = {
             'chat.system.member-removed': '{actor} удалил(а) {name}',
             'chat.system.member-role-changed':
                 '{actor} назначил(а) {name} {role, select, owner {владельцем} admin {администратором} other {участником}}',
+            'chat.system.order-cancelled': 'Заказ отменён',
+            'chat.system.order-confirmed': 'Магазин подтвердил заказ',
+            'chat.system.order-fulfilled': 'Заказ выполнен',
+            'chat.system.order-shipped': 'Заказ в пути',
             'chat.system.taxi-driver-arriving': 'Водитель подъезжает',
             'chat.system.taxi-ride-completed': 'Поездка завершена',
             'chat.system.taxi-ride-started': 'Поездка началась',
