@@ -135,3 +135,11 @@ language, so `systemNoticeText` writes any `date` variable out before translatin
 "Thursday, 26 November", "четверг, 26 ноября", "ხუთშაბათი, 26 ნოემბერი", from the namespace's own weekday and month
 keys rather than `Intl`, so a reduced-ICU browser reads it in Georgian too. It applies no time zone: the product already
 said which day it means. Anything that is not a real date is shown as written, and an older kit shows the ISO date.
+
+## Restaurant order notices (2026-11-21, 0.11.1)
+
+`restaurant-api` opens a conversation between a signed-in diner and the restaurant's staff for a takeaway or delivery
+order, labelled `chat.label.guest` and `chat.label.restaurant` under `chat.title.order`. Its notices are
+`chat.system.restaurant-order-*` (accepted, ready to collect, on its way, collected, delivered, cancelled), with no
+variables. Only the step the order has just reached is told, so the kit never draws "ready to collect" after
+"collected".
