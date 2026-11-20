@@ -26,6 +26,9 @@ export const CHAT_SYSTEM_MESSAGE_KEYS = [
     'chat.system.taxi-driver-arriving',
     'chat.system.taxi-ride-started',
     'chat.system.taxi-ride-completed',
+    'chat.system.delivery-picked-up',
+    'chat.system.delivery-in-transit',
+    'chat.system.delivery-delivered',
     'chat.system.closed',
 ] as const;
 
@@ -40,6 +43,7 @@ export const CHAT_PRODUCT_TEXT_MESSAGE_KEYS = [
     'chat.label.shop',
     'chat.label.customer',
     'chat.label.courier',
+    'chat.label.sender',
     'chat.label.trainer',
     'chat.label.member',
     'chat.title.taxi-ride',
