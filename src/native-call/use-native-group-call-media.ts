@@ -39,14 +39,17 @@ function personOf(
     sharingSince: Map<string, number>,
 ): ChatNativeGroupCallPerson {
     const video = receivedVideo(participant, Track.Source.Camera);
-    const screen = receivedVideo(participant, Track.Source.ScreenShare);
+    // Only a screen whose arrival was seen counts: LiveKit announces an unsubscribed track while its publication still
+    // holds it, so the publication alone would keep a stopped screen on the stage.
+    const since = sharingSince.get(participant.identity);
+    const screen = since === undefined ? null : receivedVideo(participant, Track.Source.ScreenShare);
 
     return {
         identity: participant.identity,
         hasVideo: video !== null,
         isSpeaking: participant.isSpeaking,
         lastSpokeAt: lastSpokeAt.get(participant.identity) ?? 0,
-        sharingSince: screen === null ? 0 : (sharingSince.get(participant.identity) ?? 1),
+        sharingSince: screen === null ? 0 : (since ?? 0),
         video,
         screen,
     };
@@ -96,6 +99,7 @@ export function useNativeGroupCallMedia(join: Maybe<ChatCallJoin>, kind: ChatCal
                 if (track.source === Track.Source.ScreenShare) sharingSince.delete(participant.identity);
                 refresh();
             })
+            .on(RoomEvent.TrackUnpublished, refresh)
             .on(RoomEvent.TrackMuted, refresh)
             .on(RoomEvent.TrackUnmuted, refresh)
             .on(RoomEvent.ParticipantConnected, refresh)
