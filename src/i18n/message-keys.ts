@@ -6,7 +6,9 @@ import { ChatRefusal, ChatReportReason } from '@iveri/contracts/chat';
  *
  * The first fourteen are `chat-api`'s own (`SYSTEM_MESSAGE_KEYS` in its `conversation/util`), with the
  * variables it writes: `{actor}` who did it, `{name}` who it was done to, `{title}`, and `{role}` as
- * `owner`, `admin` or `member`. The rest are products' notices, posted through the embedding API.
+ * `owner`, `admin` or `member`. The rest are products' notices, posted through the embedding API. Gym's
+ * carry `{date}` as a calendar date the kit writes out in the reader's words (`systemNoticeText`) and
+ * `{time}` as the gym's own 24-hour clock.
  */
 export const CHAT_SYSTEM_MESSAGE_KEYS = [
     'chat.system.group-created',
@@ -35,6 +37,9 @@ export const CHAT_SYSTEM_MESSAGE_KEYS = [
     'chat.system.order-shipped',
     'chat.system.order-fulfilled',
     'chat.system.order-cancelled',
+    'chat.system.gym-personal-booked',
+    'chat.system.gym-personal-cancelled',
+    'chat.system.gym-personal-reassigned',
     'chat.system.closed',
 ] as const;
 

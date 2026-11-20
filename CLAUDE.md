@@ -126,3 +126,12 @@ person publish any source.
   my own camera tile showed my screen there.
 - **Not proven in a real room**: the browser pane cannot capture a screen, so the share path is proven in specs with a
   stood-in room (published, stopped by the browser, drawn for others, staged in a group).
+
+## A notice's `date` is written out by the kit (2026-11-21, 0.11.0)
+
+Gym's personal-session notices (`chat.system.gym-personal-booked`, `-cancelled`, `-reassigned`) carry `{date}` as a
+calendar date (`YYYY-MM-DD`) and `{time}` as the gym's own 24-hour clock. The product's server does not know the reader's
+language, so `systemNoticeText` writes any `date` variable out before translating, through `calendarDateWords`:
+"Thursday, 26 November", "четверг, 26 ноября", "ხუთშაბათი, 26 ნოემბერი", from the namespace's own weekday and month
+keys rather than `Intl`, so a reduced-ICU browser reads it in Georgian too. It applies no time zone: the product already
+said which day it means. Anything that is not a real date is shown as written, and an older kit shows the ISO date.

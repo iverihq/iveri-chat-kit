@@ -62,6 +62,29 @@ function ownDate(moment: Date, t: ChatTranslate, options: TimeLabelOptions, shap
 }
 
 /**
+ * A calendar date (`YYYY-MM-DD`) a product sent in a notice, in the reader's words: "Thursday, 26 November",
+ * "четверг, 26 ноября". From the namespace's own words, never `Intl`, so it reads the same in a browser with no
+ * Georgian date data, and with no time zone, because the product already said which day it means (a gym's session
+ * is on the day the gym's own clock says). Anything that is not a real date comes back as written.
+ */
+export function calendarDateWords(date: string, t: ChatTranslate): string {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/u.exec(date);
+    if (match === null) return date;
+
+    const [year, monthNumber, day] = match.slice(1).map(Number);
+    const moment = new Date(Date.UTC(year, monthNumber - 1, day));
+    if (moment.getUTCFullYear() !== year || moment.getUTCMonth() !== monthNumber - 1 || moment.getUTCDate() !== day) {
+        return date;
+    }
+
+    return t('chat.date.weekday-day-month', {
+        weekday: t(`chat.date.weekday.${WEEKDAY_KEYS[moment.getUTCDay()]}`),
+        day,
+        month: t(`chat.date.month.${MONTH_KEYS[monthNumber - 1]}`),
+    });
+}
+
+/**
  * The time a message was sent, in the locale's own clock: `14:05`, or `2:05 PM` in English. Without the
  * locale's data it is a 24-hour clock, which Georgian and Russian both use, rather than English's.
  */
