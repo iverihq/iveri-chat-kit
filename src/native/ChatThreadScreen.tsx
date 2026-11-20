@@ -47,6 +47,7 @@ import {
     type ChatThreadRow,
 } from '../util/index.js';
 
+import { CallBanner } from './CallBanner.js';
 import { ChatComposer, type NativeComposerMode } from './ChatComposer.js';
 import { ChatText } from './ChatText.js';
 import { MessageBubble } from './MessageBubble.js';
@@ -321,6 +322,7 @@ export function ChatThreadScreen({
                     )}
                 </View>
             )}
+            {data.isGroup && <CallBanner conversationId={data.id} />}
             <FlatList
                 ref={list}
                 inverted

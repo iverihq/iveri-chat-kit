@@ -1,15 +1,27 @@
-import { ChatCallKind, ChatCallStatus, type ChatCall } from '@iveri/contracts/chat';
+import type { Maybe, UUID } from '@iveri/contracts';
+import { ChatCallKind, ChatCallStatus, type ChatCall, type ChatCallParticipant } from '@iveri/contracts/chat';
 import { VideoView } from '@livekit/react-native';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Image, Modal, Pressable, SafeAreaView, StyleSheet, View } from 'react-native';
+import { FlatList, Image, Modal, Pressable, SafeAreaView, StyleSheet, View } from 'react-native';
 
 import { ChatText } from '../native/ChatText.js';
 import { useChatNative } from '../native/native-context.js';
-import { ChatCallControllerContext, useChatText } from '../provider/index.js';
+import { ChatCallControllerContext, useChatContext, useChatText } from '../provider/index.js';
 import { useCall, useCallActions, useCallSession, type ChatActiveCall } from '../query/index.js';
-import { callEndLine, callOther, callPhase, formatCallClock, initialsOf } from '../util/index.js';
+import {
+    callCaller,
+    callEndLine,
+    callOther,
+    callPhase,
+    callRingLine,
+    callTitle,
+    formatCallClock,
+    initialsOf,
+    orderCallTiles,
+} from '../util/index.js';
 
 import { useNativeCallMedia } from './use-native-call-media.js';
+import { useNativeGroupCallMedia, type ChatNativeGroupCallPerson } from './use-native-group-call-media.js';
 
 const END_LINE_MS = 2_500;
 const DARK = '#141824';
@@ -44,14 +56,32 @@ export function ChatNativeCallLayer({ children }: Readonly<ChatNativeCallLayerPr
                     }}
                 />
             )}
-            {active !== null && <CallScreen active={active} onClose={session.close} />}
+            {active !== null && <ActiveCall active={active} onClose={session.close} />}
         </ChatCallControllerContext.Provider>
     );
 }
 
+/** The call under way, on the screen its kind needs: two people face to face, or a group's grid. */
+function ActiveCall({ active, onClose }: Readonly<{ active: ChatActiveCall; onClose: () => void }>): React.JSX.Element {
+    const call = useCall(active.callId).data;
+
+    return call?.isGroup === true ? (
+        <GroupCallScreen active={active} onClose={onClose} />
+    ) : (
+        <CallScreen active={active} onClose={onClose} />
+    );
+}
+
 function Face({ call, size }: Readonly<{ call: ChatCall; size: number }>): React.JSX.Element {
+    return <PersonFace person={call.isGroup ? callCaller(call) : callOther(call)} size={size} />;
+}
+
+function PersonFace({
+    person,
+    size,
+}: Readonly<{ person: Maybe<ChatCallParticipant>; size: number }>): React.JSX.Element {
     const { theme } = useChatNative();
-    const other = callOther(call);
+    const other = person;
     const image = other?.avatar ?? null;
     const style = { width: size, height: size, borderRadius: size / 2 };
 
@@ -73,8 +103,10 @@ function IncomingCard({
     onDecline,
 }: Readonly<{ call: ChatCall; onAnswer: () => void; onDecline: () => void }>): React.JSX.Element {
     const t = useChatText();
+    const { translate } = useChatContext();
     const { theme } = useChatNative();
-    const line = t('chat.call.incoming', { kind: call.kind, name: callOther(call)?.displayName ?? '' });
+    const ring = callRingLine(call, translate);
+    const line = t(ring.key, ring.values);
 
     return (
         <Modal transparent animationType="slide" onRequestClose={onDecline}>
@@ -224,6 +256,189 @@ function CallScreen({ active, onClose }: Readonly<{ active: ChatActiveCall; onCl
     );
 }
 
+/** Columns for the phone's grid: one tile fills the screen, up to four sit two by two, more three across. */
+function columnsFor(tiles: number): number {
+    if (tiles <= 1) return 1;
+
+    return tiles <= 4 ? 2 : 3;
+}
+
+function GroupTile({
+    person,
+    participant,
+    columns,
+}: Readonly<{
+    person: ChatNativeGroupCallPerson;
+    participant: Maybe<ChatCallParticipant>;
+    columns: number;
+}>): React.JSX.Element {
+    const { theme } = useChatNative();
+
+    return (
+        <View
+            style={[
+                styles.tile,
+                { flexBasis: `${100 / columns}%` },
+                person.isSpeaking && { borderColor: theme.color.accent, borderWidth: 2 },
+            ]}
+        >
+            {person.video === null ? (
+                <PersonFace person={participant} size={56} />
+            ) : (
+                <VideoView videoTrack={person.video} style={StyleSheet.absoluteFill} objectFit="cover" />
+            )}
+            <ChatText numberOfLines={1} style={styles.tileName}>
+                {participant?.displayName ?? ''}
+            </ChatText>
+        </View>
+    );
+}
+
+/**
+ * A group call on the phone: the group's name and the clock, a grid of up to eight people (video first, then whoever
+ * spoke last, the speaker outlined), how many more are in it, my camera small, and mute, camera, switch and leave.
+ * Leaving leaves the call to the others and closes the screen.
+ */
+function GroupCallScreen({
+    active,
+    onClose,
+}: Readonly<{ active: ChatActiveCall; onClose: () => void }>): React.JSX.Element {
+    const t = useChatText();
+    const { translate } = useChatContext();
+    const { theme } = useChatNative();
+    const actions = useCallActions();
+    const call = useCall(active.callId).data;
+    const [hasLeft, setLeft] = useState(false);
+    const isOver = call?.status === ChatCallStatus.ENDED;
+    const kind = call?.kind ?? ChatCallKind.VOICE;
+    const media = useNativeGroupCallMedia(isOver || hasLeft ? null : active.join, kind);
+    const [now, setNow] = useState(() => Date.now());
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setNow(Date.now());
+        }, 1_000);
+
+        return (): void => {
+            clearInterval(timer);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (hasLeft) {
+            onClose();
+
+            return undefined;
+        }
+        if (!isOver) return undefined;
+
+        const timer = setTimeout(onClose, END_LINE_MS);
+
+        return (): void => {
+            clearTimeout(timer);
+        };
+    }, [isOver, hasLeft, onClose]);
+
+    const title = call === undefined ? '' : callTitle(call, translate);
+    const phase = call === undefined ? 'connecting' : callPhase(call, media.isConnected);
+    const byUser = new Map((call?.participants ?? []).map((participant) => [participant.userId, participant]));
+    const { tiles, more } = orderCallTiles(media.people);
+    const columns = columnsFor(tiles.length);
+    const status =
+        call === undefined
+            ? t('chat.call.connecting')
+            : media.failure === 'permission'
+              ? t('chat.call.permission', { kind })
+              : media.failure === 'connection'
+                ? t('chat.call.failed')
+                : phase === 'ended'
+                  ? t(callEndLine(call).key as Parameters<typeof t>[0], { name: title })
+                  : phase === 'connecting'
+                    ? t('chat.call.connecting')
+                    : media.people.length > 0 && call.answeredAt !== null
+                      ? formatCallClock(now - new Date(call.answeredAt).getTime())
+                      : t('chat.call.waiting');
+
+    return (
+        <Modal animationType="fade" presentationStyle="fullScreen" onRequestClose={() => undefined}>
+            <View style={[styles.screen, { backgroundColor: DARK }]} accessibilityLabel={title}>
+                <SafeAreaView style={styles.fill}>
+                    <View style={styles.groupHeader}>
+                        <ChatText style={styles.name}>{title}</ChatText>
+                        <ChatText accessibilityLiveRegion="polite" style={styles.status}>
+                            {status}
+                        </ChatText>
+                    </View>
+                    {phase !== 'ended' && (
+                        <FlatList
+                            key={columns}
+                            data={tiles}
+                            numColumns={columns}
+                            keyExtractor={(person) => person.identity}
+                            contentContainerStyle={styles.grid}
+                            renderItem={({ item }) => (
+                                <GroupTile
+                                    person={item}
+                                    participant={byUser.get(item.identity as UUID) ?? null}
+                                    columns={columns}
+                                />
+                            )}
+                            ListFooterComponent={
+                                more > 0 ? (
+                                    <ChatText style={styles.status}>{t('chat.call.more', { count: more })}</ChatText>
+                                ) : undefined
+                            }
+                        />
+                    )}
+                    {kind === ChatCallKind.VIDEO && media.myVideo !== null && media.isCameraOn && phase !== 'ended' && (
+                        <VideoView
+                            videoTrack={media.myVideo ?? undefined}
+                            style={styles.myGroupVideo}
+                            objectFit="cover"
+                            mirror
+                            zOrder={1}
+                        />
+                    )}
+                    {phase !== 'ended' && (
+                        <View style={styles.controls}>
+                            <Control
+                                label={t(media.isMicOn ? 'chat.call.mute' : 'chat.call.unmute')}
+                                glyph={media.isMicOn ? 'mic' : 'mic-off'}
+                                isPressed={!media.isMicOn}
+                                onPress={media.toggleMic}
+                            />
+                            {kind === ChatCallKind.VIDEO && (
+                                <>
+                                    <Control
+                                        label={t(media.isCameraOn ? 'chat.call.camera-off' : 'chat.call.camera-on')}
+                                        glyph={media.isCameraOn ? 'camera' : 'camera-off'}
+                                        isPressed={!media.isCameraOn}
+                                        onPress={media.toggleCamera}
+                                    />
+                                    <Control
+                                        label={t('chat.call.switch-camera')}
+                                        glyph="switch"
+                                        onPress={media.switchCamera}
+                                    />
+                                </>
+                            )}
+                            <Control
+                                label={t('chat.call.leave')}
+                                glyph="hang-up"
+                                color={theme.color.critical}
+                                onPress={() => {
+                                    setLeft(true);
+                                    void actions.end(active.callId).catch(() => undefined);
+                                }}
+                            />
+                        </View>
+                    )}
+                </SafeAreaView>
+            </View>
+        </Modal>
+    );
+}
+
 /** The marks on a round control: plain characters every phone has, so the kit carries no icon library. */
 const GLYPHS = {
     mic: '●',
@@ -280,6 +495,41 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
     },
     initials: { alignItems: 'center', justifyContent: 'center' },
+    groupHeader: { alignItems: 'center', gap: 6, paddingHorizontal: 24, paddingTop: 24, paddingBottom: 12 },
+    grid: { paddingHorizontal: 8, gap: 8 },
+    tile: {
+        aspectRatio: 3 / 4,
+        margin: 4,
+        borderRadius: 14,
+        overflow: 'hidden',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(255,255,255,0.06)',
+        flexGrow: 0,
+        flexShrink: 1,
+    },
+    tileName: {
+        position: 'absolute',
+        bottom: 6,
+        left: 6,
+        right: 6,
+        color: '#ffffff',
+        fontSize: 13,
+        backgroundColor: 'rgba(0,0,0,0.45)',
+        borderRadius: 10,
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        overflow: 'hidden',
+    },
+    myGroupVideo: {
+        position: 'absolute',
+        bottom: 120,
+        right: 16,
+        width: 96,
+        height: 128,
+        borderRadius: 14,
+        overflow: 'hidden',
+    },
     incomingBackdrop: { flex: 1, justifyContent: 'flex-end', padding: 12 },
     card: { borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 16, gap: 16 },
     row: { flexDirection: 'row', alignItems: 'center', gap: 12 },

@@ -12,16 +12,19 @@ import { chatQueryKeys, NO_ID } from './query-keys.js';
 /**
  * The calls ringing for me now, anywhere. Polled every four seconds while the socket is down, because a call rings
  * for 45 and the poll is then the only way to hear it; with the socket up a frame brings it and the poll recovers.
+ *
+ * **Not asked while nobody is signed in** (`currentUserId` is null): an app that mounts its call layer before sign-in,
+ * so signing in does not remount its navigator, would otherwise get a 401 every four seconds.
  */
 export function useIncomingCalls(options: { enabled?: boolean } = {}): UseQueryResult<ChatCall[], ChatApiError> {
-    const { client } = useChatContext();
+    const { client, currentUserId } = useChatContext();
     const status = useChatRealtimeStatus();
 
     return useQuery<ChatCall[], ChatApiError>({
         queryKey: chatQueryKeys.incomingCalls(),
         queryFn: ({ signal }) => client.listIncomingCalls({ signal }),
         refetchInterval: incomingCallsPollInterval(status),
-        enabled: options.enabled ?? true,
+        enabled: (options.enabled ?? true) && currentUserId !== null,
     });
 }
 
@@ -39,7 +42,10 @@ export function useCall(callId: Maybe<UUID>): UseQueryResult<ChatCall, ChatApiEr
     });
 }
 
-/** The call ringing or under way in one conversation, for a banner over its thread. */
+/**
+ * The call ringing or under way in one conversation, for a banner over its thread. In a group it is any call there,
+ * so somebody it did not ring can join it.
+ */
 export function useCurrentCall(conversationId: Maybe<UUID>): UseQueryResult<Maybe<ChatCall>, ChatApiError> {
     const { client } = useChatContext();
     const status = useChatRealtimeStatus();
@@ -53,7 +59,7 @@ export function useCurrentCall(conversationId: Maybe<UUID>): UseQueryResult<Mayb
 }
 
 export interface ChatCallActions {
-    /** Rings the other person. The answer may already be over: busy. */
+    /** Rings the other person, or the group. The answer may already be over: busy. */
     start: (conversationId: UUID, kind: ChatCallKind) => Promise<ChatCall>;
     accept: (callId: UUID) => Promise<ChatCallJoin>;
     join: (callId: UUID) => Promise<ChatCallJoin>;

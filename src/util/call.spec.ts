@@ -8,7 +8,19 @@ import {
 } from '@iveri/contracts/chat';
 import { describe, expect, it } from 'vitest';
 
-import { callEndLine, callOther, callPhase, formatCallClock } from './call.js';
+import {
+    CHAT_CALL_VIDEO_TILES,
+    callCaller,
+    callEndLine,
+    callOther,
+    callPeopleIn,
+    callPhase,
+    callRingLine,
+    callTitle,
+    formatCallClock,
+    isCallFull,
+    orderCallTiles,
+} from './call.js';
 
 const CALLER = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const CALLEE = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -37,6 +49,9 @@ const call = (overrides: Partial<ChatCall> & { me?: 'caller' | 'callee' } = {}):
             person(CALLER, ChatCallParticipantState.JOINED, me === 'caller'),
             person(CALLEE, ChatCallParticipantState.RINGING, me === 'callee'),
         ],
+        isGroup: false,
+        title: null,
+        maxParticipants: 2,
         ringExpiresAt: '2026-11-14T10:00:45.000Z',
         answeredAt: null,
         endedAt: null,
@@ -92,5 +107,96 @@ describe('formatCallClock', () => {
         [3_725_000, '1:02:05'],
     ])('writes %s ms as %s', (ms, written) => {
         expect(formatCallClock(ms)).toBe(written);
+    });
+});
+
+describe('group calls', () => {
+    const ANA = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+    const group = (overrides: Partial<ChatCall> & { me?: 'caller' | 'callee' } = {}): ChatCall => {
+        const base = call(overrides);
+
+        return {
+            ...base,
+            isGroup: true,
+            title: 'Weekend',
+            maxParticipants: 3,
+            participants: [...base.participants, person(ANA, ChatCallParticipantState.RINGING, false)],
+            ...overrides,
+        };
+    };
+
+    it('still rings for me after somebody else answered, and is live once I am in the room', () => {
+        const answered = group({ status: ChatCallStatus.ACTIVE, me: 'callee' });
+
+        expect(callPhase(answered, false)).toBe('incoming');
+        expect(callPhase(group({ status: ChatCallStatus.ACTIVE }), true)).toBe('live');
+    });
+
+    it('says who calls and where, and leads with the group’s title', () => {
+        const translate = (key: string): string => `[${key}]`;
+
+        expect(callRingLine(group({ me: 'callee' }), translate)).toEqual({
+            key: 'chat.call.incoming-group',
+            values: { kind: ChatCallKind.VIDEO, name: 'Nino', title: 'Weekend' },
+        });
+        expect(callRingLine(call({ me: 'callee' }), translate).key).toBe('chat.call.incoming');
+        expect(callTitle(group(), translate)).toBe('Weekend');
+        expect(callTitle(group({ title: 'chat.hr.team' }), translate)).toBe('[chat.hr.team]');
+        expect(callTitle(call(), translate)).toBe('Giorgi');
+        expect(callCaller(group())?.displayName).toBe('Nino');
+    });
+
+    it('counts who is in it, and is full at its limit', () => {
+        const ringing = group();
+
+        expect(callPeopleIn(ringing).map((p) => p.displayName)).toEqual(['Nino']);
+        expect(isCallFull(ringing)).toBe(false);
+        expect(
+            isCallFull({
+                ...ringing,
+                participants: ringing.participants.map((p) => ({ ...p, state: ChatCallParticipantState.JOINED })),
+            }),
+        ).toBe(true);
+    });
+
+    it('tells the caller nobody joined, and everybody else that it ended', () => {
+        for (const reason of [ChatCallEndReason.MISSED, ChatCallEndReason.DECLINED, ChatCallEndReason.BUSY]) {
+            const ended = { status: ChatCallStatus.ENDED, endReason: reason };
+
+            expect(callEndLine(group(ended)).key).toBe('chat.call.nobody-joined');
+            expect(callEndLine(group({ ...ended, me: 'callee' })).key).toBe('chat.call.ended');
+        }
+        expect(callEndLine(group({ status: ChatCallStatus.ENDED, endReason: ChatCallEndReason.COMPLETED })).key).toBe(
+            'chat.call.ended',
+        );
+    });
+});
+
+describe('orderCallTiles', () => {
+    const tile = (identity: string, hasVideo: boolean, lastSpokeAt = 0) => ({
+        identity,
+        hasVideo,
+        isSpeaking: false,
+        lastSpokeAt,
+    });
+
+    it('puts video first, then whoever spoke last, keeping the room’s order otherwise', () => {
+        const { tiles, more } = orderCallTiles([
+            tile('a', false),
+            tile('b', false, 5),
+            tile('c', true),
+            tile('d', false),
+        ]);
+
+        expect(tiles.map((t) => t.identity)).toEqual(['c', 'b', 'a', 'd']);
+        expect(more).toBe(0);
+    });
+
+    it('draws eight at most and counts the rest', () => {
+        const people = Array.from({ length: 11 }, (_, index) => tile(String(index), false));
+        const { tiles, more } = orderCallTiles(people);
+
+        expect(tiles).toHaveLength(CHAT_CALL_VIDEO_TILES);
+        expect(more).toBe(3);
     });
 });

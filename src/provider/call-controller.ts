@@ -9,6 +9,8 @@ import { createContext, useContext } from 'react';
  */
 export interface ChatCallController {
     startCall: (conversationId: UUID, kind: ChatCallKind) => void;
+    /** Joins a group call already under way, from the banner over its thread. */
+    joinCall: (callId: UUID) => void;
     activeCallId: Maybe<UUID>;
 }
 
