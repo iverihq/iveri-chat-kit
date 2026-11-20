@@ -5,7 +5,7 @@ import type { ChatCatalogue } from './catalogue.type.js';
 
 export const CHAT_KIT_DEFAULT_CATALOGUE: ChatCatalogue = {
     namespace: 'chat-kit',
-    version: 4,
+    version: 5,
     sourceLocale: 'en',
     messages: {
         en: {
@@ -55,8 +55,12 @@ export const CHAT_KIT_DEFAULT_CATALOGUE: ChatCatalogue = {
             'chat.call.people': '{count, plural, one {# person in the call} other {# people in the call}}',
             'chat.call.permission':
                 'Allow the microphone{kind, select, video { and camera} other {}} to make this call',
+            'chat.call.share-screen': 'Share your screen',
+            'chat.call.sharing': '{name} is sharing their screen',
+            'chat.call.sharing-mine': 'You are sharing your screen',
             'chat.call.start-video': 'Video call',
             'chat.call.start-voice': 'Voice call',
+            'chat.call.stop-sharing': 'Stop sharing',
             'chat.call.switch-camera': 'Switch camera',
             'chat.call.unmute': 'Unmute',
             'chat.call.waiting': 'Waiting for others to join',
@@ -388,8 +392,12 @@ export const CHAT_KIT_DEFAULT_CATALOGUE: ChatCatalogue = {
             'chat.call.nobody-joined': 'არავინ შემოუერთდა',
             'chat.call.people': '{count, plural, other {ზარში # მონაწილეა}}',
             'chat.call.permission': 'ზარისთვის დაუშვი მიკროფონზე{kind, select, video { და კამერაზე} other {}} წვდომა',
+            'chat.call.share-screen': 'ეკრანის გაზიარება',
+            'chat.call.sharing': '{name} ეკრანს აზიარებს',
+            'chat.call.sharing-mine': 'შენ ეკრანს აზიარებ',
             'chat.call.start-video': 'ვიდეოზარი',
             'chat.call.start-voice': 'ხმოვანი ზარი',
+            'chat.call.stop-sharing': 'გაზიარების შეწყვეტა',
             'chat.call.switch-camera': 'კამერის შეცვლა',
             'chat.call.unmute': 'მიკროფონის ჩართვა',
             'chat.call.waiting': 'ველოდებით, სანამ სხვები შემოუერთდებიან',
@@ -720,8 +728,12 @@ export const CHAT_KIT_DEFAULT_CATALOGUE: ChatCatalogue = {
                 '{count, plural, one {# участник в звонке} few {# участника в звонке} many {# участников в звонке} other {# участника в звонке}}',
             'chat.call.permission':
                 'Разрешите доступ к микрофону{kind, select, video { и камере} other {}}, чтобы позвонить',
+            'chat.call.share-screen': 'Показать экран',
+            'chat.call.sharing': '{name} показывает экран',
+            'chat.call.sharing-mine': 'Вы показываете свой экран',
             'chat.call.start-video': 'Видеозвонок',
             'chat.call.start-voice': 'Голосовой звонок',
+            'chat.call.stop-sharing': 'Остановить показ',
             'chat.call.switch-camera': 'Сменить камеру',
             'chat.call.unmute': 'Включить микрофон',
             'chat.call.waiting': 'Ждём, пока присоединятся остальные',

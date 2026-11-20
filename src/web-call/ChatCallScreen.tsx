@@ -11,6 +11,7 @@ import { ChatThemeScope } from '../web/ChatThemeScope.js';
 import { HangUpIcon, MicIcon, MicOffIcon, VideoIcon, VideoOffIcon } from '../web/icons.js';
 import { cn, FOCUS_RING } from '../web/style.js';
 
+import { ScreenShareButton, SharingMyScreen } from './ScreenShareButton.js';
 import { useCallMedia } from './use-call-media.js';
 
 /** How long the last line ("No answer", "Call ended") stays before the screen goes. */
@@ -36,7 +37,8 @@ export interface ChatCallScreenProps {
 
 /**
  * The one call under way, over the whole app: who it is with, how long it has lasted, the other person's video large
- * and mine small, and mute, camera and hang up. It reads how the call stands from `chat-api` and leaves the room once
+ * and mine small (or their shared screen whole, in place of their video), and mute, camera, share my screen (where the
+ * browser can) and hang up. It reads how the call stands from `chat-api` and leaves the room once
  * the call has ended, so a call the other person hung up, or one that rang out, closes here too.
  */
 export function ChatCallScreen({ callId, join, onClose }: Readonly<ChatCallScreenProps>): React.JSX.Element | null {
@@ -48,7 +50,8 @@ export function ChatCallScreen({ callId, join, onClose }: Readonly<ChatCallScree
     const remoteVideo = useRef<HTMLVideoElement | null>(null);
     const remoteAudio = useRef<HTMLAudioElement | null>(null);
     const localVideo = useRef<HTMLVideoElement | null>(null);
-    const media = useCallMedia(isOver ? null : join, kind, { remoteVideo, remoteAudio, localVideo });
+    const remoteScreen = useRef<HTMLVideoElement | null>(null);
+    const media = useCallMedia(isOver ? null : join, kind, { remoteVideo, remoteAudio, localVideo, remoteScreen });
     const [now, setNow] = useState(() => Date.now());
 
     useEffect(() => {
@@ -93,7 +96,10 @@ export function ChatCallScreen({ callId, join, onClose }: Readonly<ChatCallScree
                     ? formatCallClock(now - new Date(call.answeredAt).getTime())
                     : t('chat.call.connecting');
 
-    const showsOtherVideo = kind === ChatCallKind.VIDEO && media.hasOtherVideo && phase === 'live';
+    // A shared screen takes the whole view, in any kind of call; their camera waits behind it.
+    const showsOtherScreen = media.hasOtherScreen && phase === 'live';
+    const showsOtherVideo = kind === ChatCallKind.VIDEO && media.hasOtherVideo && phase === 'live' && !showsOtherScreen;
+    const showsLarge = showsOtherVideo || showsOtherScreen;
 
     return createPortal(
         <ChatThemeScope>
@@ -111,6 +117,17 @@ export function ChatCallScreen({ callId, join, onClose }: Readonly<ChatCallScree
                     playsInline
                     className={cn('absolute inset-0 h-full w-full object-cover', !showsOtherVideo && 'hidden')}
                 />
+                {/* A screen is shown whole, never cropped: the words on it are what was shared. */}
+                <video
+                    ref={remoteScreen}
+                    autoPlay
+                    playsInline
+                    muted
+                    className={cn(
+                        'absolute inset-0 h-full w-full bg-black object-contain',
+                        !showsOtherScreen && 'hidden',
+                    )}
+                />
                 {kind === ChatCallKind.VIDEO && (
                     <video
                         ref={localVideo}
@@ -126,15 +143,25 @@ export function ChatCallScreen({ callId, join, onClose }: Readonly<ChatCallScree
                 <div
                     className={cn(
                         'relative z-10 flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center',
-                        showsOtherVideo && 'justify-start pt-10',
+                        showsLarge && 'justify-start pt-10',
                     )}
                 >
-                    {!showsOtherVideo && <ChatAvatar name={name} image={other?.avatar ?? null} size="lg" />}
+                    {!showsLarge && <ChatAvatar name={name} image={other?.avatar ?? null} size="lg" />}
                     <p className="font-chat-display text-h2 font-semibold drop-shadow">{name}</p>
                     <p aria-live="polite" className="text-body tabular-nums text-white/80 drop-shadow">
                         {status}
                     </p>
+                    {showsOtherScreen && (
+                        <p className="rounded-full bg-black/50 px-3 py-1 text-label text-white">
+                            {t('chat.call.sharing', { name })}
+                        </p>
+                    )}
                 </div>
+                {media.isSharingScreen && phase !== 'ended' && (
+                    <div className="relative z-10 px-4 pb-4">
+                        <SharingMyScreen onStop={media.toggleScreenShare} />
+                    </div>
+                )}
                 {phase !== 'ended' && (
                     <div className="relative z-10 flex items-center justify-center gap-5 pb-[max(2rem,env(safe-area-inset-bottom))]">
                         <button
@@ -160,6 +187,13 @@ export function ChatCallScreen({ callId, join, onClose }: Readonly<ChatCallScree
                                     <VideoOffIcon className="h-6 w-6" />
                                 )}
                             </button>
+                        )}
+                        {media.canShareScreen && media.isConnected && (
+                            <ScreenShareButton
+                                isSharing={media.isSharingScreen}
+                                onToggle={media.toggleScreenShare}
+                                className={CONTROL}
+                            />
                         )}
                         <button type="button" aria-label={t('chat.call.hang-up')} onClick={hangUp} className={HANG_UP}>
                             <HangUpIcon className="h-6 w-6" />

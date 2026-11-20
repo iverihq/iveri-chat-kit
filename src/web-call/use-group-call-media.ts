@@ -3,14 +3,17 @@ import { ChatCallKind, type ChatCallJoin } from '@iveri/contracts/chat';
 import { Room, RoomEvent, Track, type RemoteParticipant, type RemoteTrack, type VideoTrack } from 'livekit-client';
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 
-import type { ChatCallTileCandidate } from '../util/index.js';
+import type { ChatCallStageCandidate } from '../util/index.js';
 
+import { canShareScreen, isScreenShare, toggleScreenShare } from './screen-share.js';
 import type { ChatCallMediaFailure } from './use-call-media.js';
 
 /** Somebody else in a group call's room, as its screen draws them. */
-export interface ChatGroupCallPerson extends ChatCallTileCandidate {
+export interface ChatGroupCallPerson extends ChatCallStageCandidate {
     /** Their camera, while it is on and received. */
     video: Nullable<VideoTrack>;
+    /** Their shared screen, while they share one and it is received. */
+    screen: Nullable<VideoTrack>;
 }
 
 export interface ChatGroupCallMedia {
@@ -22,8 +25,13 @@ export interface ChatGroupCallMedia {
     isCameraOn: boolean;
     isSpeaking: boolean;
     failure: Maybe<ChatCallMediaFailure>;
+    /** This browser can share a screen; false on a phone, where the control is not drawn. */
+    canShareScreen: boolean;
+    /** I am sharing my screen. */
+    isSharingScreen: boolean;
     toggleMic: () => void;
     toggleCamera: () => void;
+    toggleScreenShare: () => void;
 }
 
 /** The elements a group call draws into, owned by the screen and filled here. */
@@ -33,23 +41,36 @@ export interface ChatGroupCallMediaElements {
     audio: RefObject<HTMLElement | null>;
 }
 
-function personOf(participant: RemoteParticipant, lastSpokeAt: Map<string, number>): ChatGroupCallPerson {
-    const camera = participant.getTrackPublication(Track.Source.Camera);
-    const video = camera?.isSubscribed === true && !camera.isMuted ? (camera.videoTrack ?? null) : null;
+function receivedVideo(participant: RemoteParticipant, source: Track.Source): Nullable<VideoTrack> {
+    const publication = participant.getTrackPublication(source);
+
+    return publication?.isSubscribed === true && !publication.isMuted ? (publication.videoTrack ?? null) : null;
+}
+
+function personOf(
+    participant: RemoteParticipant,
+    lastSpokeAt: Map<string, number>,
+    sharingSince: Map<string, number>,
+): ChatGroupCallPerson {
+    const video = receivedVideo(participant, Track.Source.Camera);
+    const screen = receivedVideo(participant, Track.Source.ScreenShare);
 
     return {
         identity: participant.identity,
         hasVideo: video !== null,
         isSpeaking: participant.isSpeaking,
         lastSpokeAt: lastSpokeAt.get(participant.identity) ?? 0,
+        sharingSince: screen === null ? 0 : (sharingSince.get(participant.identity) ?? 1),
         video,
+        screen,
     };
 }
 
 /**
  * One LiveKit room for a group call, joined with the token `chat-api` signed, for as long as `join` is given. Like
- * `useCallMedia` it decides nothing about how the call ends; it reports who is in the room, who has a camera on and who
- * spoke last (for the screen's tile order), plays everybody's sound, and switches my microphone and camera.
+ * `useCallMedia` it decides nothing about how the call ends; it reports who is in the room, who has a camera on, who
+ * spoke last and who is sharing a screen since when (for the screen's stage and tiles), plays everybody's sound, and
+ * switches my microphone, camera and screen sharing.
  *
  * The room is subscribed adaptively (`adaptiveStream`), so a tile LiveKit sees is small or hidden is sent small or not
  * at all: what keeps a group call on a phone affordable.
@@ -67,6 +88,8 @@ export function useGroupCallMedia(
     const [isMicOn, setMicOn] = useState(true);
     const [isCameraOn, setCameraOn] = useState(kind === ChatCallKind.VIDEO);
     const [failure, setFailure] = useState<Maybe<ChatCallMediaFailure>>(null);
+    const [isSharingScreen, setSharingScreen] = useState(false);
+    const [canShare] = useState(canShareScreen);
     const url = join?.url ?? null;
     const token = join?.token ?? null;
 
@@ -77,10 +100,14 @@ export function useGroupCallMedia(
         const left = new AbortController();
         const isLeft = (): boolean => left.signal.aborted;
         const lastSpokeAt = new Map<string, number>();
+        // When each shared screen first arrived, so the one shared last takes the stage.
+        const sharingSince = new Map<string, number>();
         const refresh = (): void => {
             if (isLeft()) return;
             setPeople(
-                [...current.remoteParticipants.values()].map((participant) => personOf(participant, lastSpokeAt)),
+                [...current.remoteParticipants.values()].map((participant) =>
+                    personOf(participant, lastSpokeAt, sharingSince),
+                ),
             );
         };
 
@@ -93,11 +120,13 @@ export function useGroupCallMedia(
         };
 
         current
-            .on(RoomEvent.TrackSubscribed, (track) => {
+            .on(RoomEvent.TrackSubscribed, (track, _publication, participant) => {
+                if (isScreenShare(track)) sharingSince.set(participant.identity, Date.now());
                 attachAudio(track);
                 refresh();
             })
-            .on(RoomEvent.TrackUnsubscribed, (track) => {
+            .on(RoomEvent.TrackUnsubscribed, (track, _publication, participant) => {
+                if (isScreenShare(track)) sharingSince.delete(participant.identity);
                 for (const element of track.detach()) element.remove();
                 refresh();
             })
@@ -113,9 +142,14 @@ export function useGroupCallMedia(
                 refresh();
             })
             .on(RoomEvent.LocalTrackPublished, (publication) => {
-                if (publication.track?.kind === Track.Kind.Video && localVideo.current !== null) {
+                if (isScreenShare(publication)) {
+                    setSharingScreen(true);
+                } else if (publication.track?.kind === Track.Kind.Video && localVideo.current !== null) {
                     publication.track.attach(localVideo.current);
                 }
+            })
+            .on(RoomEvent.LocalTrackUnpublished, (publication) => {
+                if (isScreenShare(publication)) setSharingScreen(false);
             });
 
         void (async (): Promise<void> => {
@@ -143,6 +177,7 @@ export function useGroupCallMedia(
         return (): void => {
             left.abort();
             room.current = null;
+            setSharingScreen(false);
             void current.disconnect();
         };
     }, [url, token, kind, localVideo, audio]);
@@ -161,5 +196,21 @@ export function useGroupCallMedia(
         void room.current?.localParticipant.setCameraEnabled(next);
     }, [isCameraOn]);
 
-    return { isConnected, people, isMicOn, isCameraOn, isSpeaking, failure, toggleMic, toggleCamera };
+    const toggleShare = useCallback((): void => {
+        toggleScreenShare(room.current?.localParticipant);
+    }, []);
+
+    return {
+        isConnected,
+        people,
+        isMicOn,
+        isCameraOn,
+        isSpeaking,
+        failure,
+        canShareScreen: canShare,
+        isSharingScreen,
+        toggleMic,
+        toggleCamera,
+        toggleScreenShare: toggleShare,
+    };
 }

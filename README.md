@@ -278,10 +278,14 @@ import { ChatCallLayer } from '@iveri/chat-kit/web-call';
   block or a product that does not allow calls draws no button. Without a layer nothing changes.
 - **Group calls** (chat-api with `@iveri/contracts` 0.104 or later): a group's thread shows a banner over a call going on
   there that I am not in, with how many are in it and Join (or that it is full), and pressing Call in a group that
-  already has one joins it. The group screen is a grid of up to eight people (`CHAT_CALL_VIDEO_TILES`: video first,
-  then whoever spoke last, the speaker outlined) and "+N more"; leaving leaves the call to the others. The incoming card
-  says which group is calling. The headless pieces are `callTitle`, `callRingLine`, `callPeopleIn`, `isCallFull` and
-  `orderCallTiles`, and the session's controller has `joinCall`.
+  already has one joins it. The group screen draws one person large, whoever spoke last, with the others in a row under
+  it, eight videos at most (`CHAT_CALL_VIDEO_TILES`) and "+N more"; leaving leaves the call to the others. The incoming
+  card says which group is calling. The headless pieces are `callTitle`, `callRingLine`, `callPeopleIn`, `isCallFull`,
+  `orderCallTiles` and `arrangeCallStage`, and the session's controller has `joinCall`.
+- **Screen sharing from a browser** (0.10.0): both web call screens have a Share your screen control wherever the
+  browser has `getDisplayMedia` (not on a phone). A shared screen is drawn whole and large with who is sharing it; in a
+  group it takes the large place from the speaker. The browser's own "Stop sharing" ends it too. The screen's sound is
+  not sent. The phone screens show a screen shared from a browser but never share one.
 - **Nothing is asked about calls while nobody is signed in** (`currentUserId` null), so a layer mounted before sign-in
   does not poll `GET /me/calls/incoming` into a 401 every four seconds.
 - **The kit never decides how a call ended.** Leaving the room only leaves it; `chat-api` hears it from LiveKit and the

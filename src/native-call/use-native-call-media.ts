@@ -10,6 +10,8 @@ export interface ChatNativeCallMedia {
     isConnected: boolean;
     hasOther: boolean;
     otherVideo: Maybe<VideoTrack>;
+    /** The other person's shared screen, from a browser; a phone never shares one. */
+    otherScreen: Maybe<VideoTrack>;
     myVideo: Maybe<VideoTrack>;
     isMicOn: boolean;
     isCameraOn: boolean;
@@ -31,6 +33,7 @@ export function useNativeCallMedia(join: Maybe<ChatCallJoin>, kind: ChatCallKind
     const [isConnected, setConnected] = useState(false);
     const [hasOther, setHasOther] = useState(false);
     const [otherVideo, setOtherVideo] = useState<Maybe<VideoTrack>>(null);
+    const [otherScreen, setOtherScreen] = useState<Maybe<VideoTrack>>(null);
     const [myVideo, setMyVideo] = useState<Maybe<VideoTrack>>(null);
     const [isMicOn, setMicOn] = useState(true);
     const [isCameraOn, setCameraOn] = useState(kind === ChatCallKind.VIDEO);
@@ -48,11 +51,16 @@ export function useNativeCallMedia(join: Maybe<ChatCallJoin>, kind: ChatCallKind
 
         room.current = current;
         current
+            // A screen shared from a browser is a second video beside the camera, told apart by its source.
             .on(RoomEvent.TrackSubscribed, (track) => {
-                if (track.kind === Track.Kind.Video) setOtherVideo(track as VideoTrack);
+                if (track.kind !== Track.Kind.Video) return;
+                if (track.source === Track.Source.ScreenShare) setOtherScreen(track as VideoTrack);
+                else setOtherVideo(track as VideoTrack);
             })
             .on(RoomEvent.TrackUnsubscribed, (track) => {
-                if (track.kind === Track.Kind.Video) setOtherVideo(null);
+                if (track.kind !== Track.Kind.Video) return;
+                if (track.source === Track.Source.ScreenShare) setOtherScreen(null);
+                else setOtherVideo(null);
             })
             .on(RoomEvent.ParticipantConnected, () => {
                 setHasOther(true);
@@ -127,6 +135,7 @@ export function useNativeCallMedia(join: Maybe<ChatCallJoin>, kind: ChatCallKind
         isConnected,
         hasOther,
         otherVideo,
+        otherScreen,
         myVideo,
         isMicOn,
         isCameraOn,

@@ -6,7 +6,7 @@ import {
     type ChatCall,
     type ChatCallJoin,
 } from '@iveri/contracts/chat';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -17,18 +17,47 @@ import { ChatThread } from '../web/ChatThread.js';
 import { ChatCallLayer } from './ChatCallLayer.js';
 
 /** LiveKit's browser client needs WebRTC, which jsdom has none of; the room is the one thing stood in for. */
-const rooms = vi.hoisted(() => ({ connected: [] as { url: string; token: string }[], left: 0 }));
+type Handler = (...args: unknown[]) => void;
+const rooms = vi.hoisted(() => ({
+    connected: [] as { url: string; token: string }[],
+    left: 0,
+    /** The room the screen made last, so a test can play LiveKit's events into it. */
+    current: null as null | {
+        emit: (event: string, ...args: unknown[]) => void;
+        remoteParticipants: Map<string, unknown>;
+        shares: boolean[];
+    },
+}));
 
 vi.mock('livekit-client', () => {
     class Room {
-        remoteParticipants = new Map();
+        remoteParticipants = new Map<string, unknown>();
+        handlers = new Map<string, Handler[]>();
+        shares: boolean[] = [];
         localParticipant = {
+            identity: 'me',
+            isScreenShareEnabled: false,
             setMicrophoneEnabled: (): Promise<void> => Promise.resolve(),
             setCameraEnabled: (): Promise<void> => Promise.resolve(),
+            setScreenShareEnabled: (on: boolean): Promise<void> => {
+                this.shares.push(on);
+
+                return Promise.resolve();
+            },
         };
 
-        on(): this {
+        constructor() {
+            rooms.current = this;
+        }
+
+        on(event: string, handler: Handler): this {
+            this.handlers.set(event, [...(this.handlers.get(event) ?? []), handler]);
+
             return this;
+        }
+
+        emit(event: string, ...args: unknown[]): void {
+            for (const handler of this.handlers.get(event) ?? []) handler(...args);
         }
 
         connect(url: string, token: string): Promise<void> {
@@ -47,15 +76,48 @@ vi.mock('livekit-client', () => {
     return {
         Room,
         RoomEvent: {
-            TrackSubscribed: 'a',
-            TrackUnsubscribed: 'b',
-            ParticipantConnected: 'c',
-            ParticipantDisconnected: 'd',
-            LocalTrackPublished: 'e',
+            TrackSubscribed: 'track-subscribed',
+            TrackUnsubscribed: 'track-unsubscribed',
+            TrackMuted: 'track-muted',
+            TrackUnmuted: 'track-unmuted',
+            ParticipantConnected: 'participant-connected',
+            ParticipantDisconnected: 'participant-disconnected',
+            ActiveSpeakersChanged: 'active-speakers-changed',
+            LocalTrackPublished: 'local-track-published',
+            LocalTrackUnpublished: 'local-track-unpublished',
         },
-        Track: { Kind: { Video: 'video', Audio: 'audio' } },
+        Track: {
+            Kind: { Video: 'video', Audio: 'audio' },
+            Source: { Camera: 'camera', ScreenShare: 'screen_share' },
+        },
     };
 });
+
+/** A video track as LiveKit hands one over, with the source that tells a camera from a shared screen. */
+const videoTrack = (source: 'camera' | 'screen_share') => ({
+    kind: 'video',
+    source,
+    attach: vi.fn(),
+    detach: vi.fn((): HTMLElement[] => []),
+});
+
+const emit = (event: string, ...args: unknown[]): void => {
+    act(() => {
+        rooms.current?.emit(event, ...args);
+    });
+};
+
+/** Lets this browser share a screen, as a desktop browser can and jsdom cannot. */
+const allowScreenShare = (): (() => void) => {
+    Object.defineProperty(navigator, 'mediaDevices', {
+        configurable: true,
+        value: { getDisplayMedia: vi.fn() },
+    });
+
+    return (): void => {
+        Reflect.deleteProperty(navigator, 'mediaDevices');
+    };
+};
 
 const OTHER = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const CALL = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
@@ -141,6 +203,7 @@ beforeAll(() => {
 beforeEach(() => {
     rooms.connected = [];
     rooms.left = 0;
+    rooms.current = null;
 });
 
 describe('ChatCallLayer', () => {
@@ -267,6 +330,80 @@ describe('ChatCallLayer', () => {
         });
     });
 
+    it('offers no screen sharing where the browser cannot share a screen', async () => {
+        const answered = call({ status: ChatCallStatus.ACTIVE }, true);
+        const h = harness({ incoming: [call({}, true)] });
+        h.stub.on('POST', `/calls/${CALL}/accept`, () => ({ body: join(answered) }));
+        h.stub.on('GET', `/calls/${CALL}`, () => ({ body: answered }));
+
+        render(<ChatCallLayer />, { wrapper: h.wrapper });
+        await userEvent.click(await screen.findByRole('button', { name: /chat.call.answer/u }));
+
+        expect(await screen.findByRole('button', { name: 'chat.call.hang-up' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'chat.call.share-screen' })).not.toBeInTheDocument();
+    });
+
+    it("shares my screen, says so, and goes back when the browser's own bar stops it", async () => {
+        const restore = allowScreenShare();
+        const answered = call({ status: ChatCallStatus.ACTIVE }, true);
+        const h = harness({ incoming: [call({}, true)] });
+        h.stub.on('POST', `/calls/${CALL}/accept`, () => ({ body: join(answered) }));
+        h.stub.on('GET', `/calls/${CALL}`, () => ({ body: answered }));
+
+        try {
+            render(<ChatCallLayer />, { wrapper: h.wrapper });
+            await userEvent.click(await screen.findByRole('button', { name: /chat.call.answer/u }));
+            await userEvent.click(await screen.findByRole('button', { name: 'chat.call.share-screen' }));
+
+            expect(rooms.current?.shares).toEqual([true]);
+
+            emit('local-track-published', { source: 'screen_share', track: videoTrack('screen_share') });
+            expect(await screen.findByText('chat.call.sharing-mine')).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'chat.call.stop-sharing', pressed: true })).toBeInTheDocument();
+
+            // The browser's "Stop sharing" ends the track; LiveKit unpublishes it and the screen hears only that.
+            emit('local-track-unpublished', { source: 'screen_share' });
+            expect(screen.queryByText('chat.call.sharing-mine')).not.toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'chat.call.share-screen' })).toBeInTheDocument();
+        } finally {
+            restore();
+        }
+    });
+
+    it("shows the other person's shared screen whole, and names who is sharing", async () => {
+        const ringing = call({}, true);
+        const answered = call(
+            {
+                status: ChatCallStatus.ACTIVE,
+                answeredAt: '2026-11-14T10:00:05.000Z',
+                participants: ringing.participants.map((person) => ({
+                    ...person,
+                    state: ChatCallParticipantState.JOINED,
+                })),
+            },
+            true,
+        );
+        const h = harness({ incoming: [call({}, true)] });
+        h.stub.on('POST', `/calls/${CALL}/accept`, () => ({ body: join(answered) }));
+        h.stub.on('GET', `/calls/${CALL}`, () => ({ body: answered }));
+
+        render(<ChatCallLayer />, { wrapper: h.wrapper });
+        await userEvent.click(await screen.findByRole('button', { name: /chat.call.answer/u }));
+        await screen.findByRole('dialog', { name: 'Giorgi' });
+
+        const shared = videoTrack('screen_share');
+        emit('participant-connected', { identity: OTHER });
+        emit('track-subscribed', shared, { source: 'screen_share' }, { identity: OTHER });
+
+        expect(await screen.findByText('chat.call.sharing {"name":"Giorgi"}')).toBeInTheDocument();
+        const element = shared.attach.mock.calls[0]?.[0] as HTMLVideoElement;
+        expect(element.className).toContain('object-contain');
+        expect(element.className).not.toContain('hidden');
+
+        emit('track-unsubscribed', shared, { source: 'screen_share' }, { identity: OTHER });
+        expect(screen.queryByText('chat.call.sharing {"name":"Giorgi"}')).not.toBeInTheDocument();
+    });
+
     it('asks for no ringing call while nobody is signed in', async () => {
         const h = harness({ signedOut: true });
 
@@ -370,6 +507,85 @@ describe('Group calls', () => {
         expect(h.stub.requests.some((r) => r.method === 'POST' && r.path === `/calls/${CALL}/end`)).toBe(true);
         await waitFor(() => {
             expect(rooms.left).toBe(1);
+        });
+    });
+    describe('the stage', () => {
+        /** Somebody in the room, with a camera or a shared screen the test can switch on. */
+        const remote = (identity: string) => {
+            const tracks = new Map<string, ReturnType<typeof videoTrack>>();
+
+            return {
+                identity,
+                isSpeaking: false,
+                tracks,
+                getTrackPublication: (source: string) => {
+                    const track = tracks.get(source);
+
+                    return track === undefined ? undefined : { isSubscribed: true, isMuted: false, videoTrack: track };
+                },
+            };
+        };
+
+        const joinGroup = async (h: ReturnType<typeof harness>): Promise<void> => {
+            const inIt = group({}, ChatCallParticipantState.JOINED);
+            h.stub.on('GET', `/conversations/${CONVERSATION}/calls/current`, () => ({ body: { call: group() } }));
+            h.stub.on('POST', `/calls/${CALL}/join`, () => ({ body: join(inIt) }));
+            h.stub.on('GET', `/calls/${CALL}`, () => ({ body: inIt }));
+            threadInLayer(h);
+            await userEvent.click(
+                within(await screen.findByRole('status')).getByRole('button', { name: 'chat.call.join' }),
+            );
+            await waitFor(() => {
+                expect(rooms.connected).toHaveLength(1);
+            });
+        };
+
+        it('draws whoever spoke last large, and the others in a row', async () => {
+            const h = harness({ isGroup: true });
+            await joinGroup(h);
+            const giorgi = remote(OTHER);
+            const ana = remote(ANA);
+            rooms.current?.remoteParticipants.set(OTHER, giorgi);
+            rooms.current?.remoteParticipants.set(ANA, ana);
+
+            emit('participant-connected', giorgi);
+            emit('active-speakers-changed', [ana]);
+
+            const row = await screen.findByRole('list');
+            expect(within(row).getByText('Giorgi')).toBeInTheDocument();
+            expect(within(row).queryByText('Ana')).not.toBeInTheDocument();
+            expect(screen.getByText('Ana')).toBeInTheDocument();
+
+            emit('active-speakers-changed', [giorgi]);
+            expect(within(screen.getByRole('list')).getByText('Ana')).toBeInTheDocument();
+            expect(within(screen.getByRole('list')).queryByText('Giorgi')).not.toBeInTheDocument();
+        });
+
+        it('gives a shared screen the stage, its sharer keeping a tile', async () => {
+            const h = harness({ isGroup: true });
+            await joinGroup(h);
+            const giorgi = remote(OTHER);
+            const ana = remote(ANA);
+            rooms.current?.remoteParticipants.set(OTHER, giorgi);
+            rooms.current?.remoteParticipants.set(ANA, ana);
+            emit('participant-connected', giorgi);
+            emit('active-speakers-changed', [ana]);
+
+            const shared = videoTrack('screen_share');
+            giorgi.tracks.set('screen_share', shared);
+            emit('track-subscribed', shared, { source: 'screen_share' }, giorgi);
+
+            expect(await screen.findByText('chat.call.sharing {"name":"Giorgi"}')).toBeInTheDocument();
+            const row = screen.getByRole('list');
+            expect(within(row).getByText('Giorgi')).toBeInTheDocument();
+            expect(within(row).getByText('Ana')).toBeInTheDocument();
+            await waitFor(() => {
+                expect((shared.attach.mock.calls[0]?.[0] as HTMLVideoElement).className).toContain('object-contain');
+            });
+
+            giorgi.tracks.delete('screen_share');
+            emit('track-unsubscribed', shared, { source: 'screen_share' }, giorgi);
+            expect(screen.queryByText('chat.call.sharing {"name":"Giorgi"}')).not.toBeInTheDocument();
         });
     });
 });

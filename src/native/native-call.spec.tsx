@@ -5,7 +5,7 @@ import {
     ChatConversationKind,
     type ChatCall,
 } from '@iveri/contracts/chat';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ChatNativeCallLayer } from '../native-call/index.js';
@@ -18,7 +18,12 @@ import { ChatThreadScreen } from './ChatThreadScreen.js';
 // The phone's call layer, drawn through react-native-web like every native spec. LiveKit's React Native module and
 // its room need a phone; both are stood in for, so this proves the layer rings, answers and connects with what
 // `chat-api` gave it, and nothing about audio or video.
-const rooms = vi.hoisted(() => ({ connected: [] as { url: string; token: string }[], sessions: 0 }));
+const rooms = vi.hoisted(() => ({
+    connected: [] as { url: string; token: string }[],
+    sessions: 0,
+    /** The room made last, so a test can play LiveKit's events into it. */
+    current: null as null | { emit: (event: string, ...args: unknown[]) => void },
+}));
 // Hoisted with the mock that uses it, and named in camelCase as a property, since the rules want one.
 const stand = vi.hoisted(() => ({ noVideo: (): null => null }));
 
@@ -43,8 +48,20 @@ vi.mock('livekit-client', () => {
             getTrackPublication: (): undefined => undefined,
         };
 
-        on(): this {
+        handlers = new Map<string, ((...args: unknown[]) => void)[]>();
+
+        constructor() {
+            rooms.current = this;
+        }
+
+        on(event: string, handler: (...args: unknown[]) => void): this {
+            this.handlers.set(event, [...(this.handlers.get(event) ?? []), handler]);
+
             return this;
+        }
+
+        emit(event: string, ...args: unknown[]): void {
+            for (const handler of this.handlers.get(event) ?? []) handler(...args);
         }
 
         connect(url: string, token: string): Promise<void> {
@@ -60,8 +77,8 @@ vi.mock('livekit-client', () => {
 
     return {
         Room,
-        RoomEvent: {},
-        Track: { Kind: { Video: 'video', Audio: 'audio' }, Source: { Camera: 'camera' } },
+        RoomEvent: { TrackSubscribed: 'track-subscribed', ParticipantConnected: 'participant-connected' },
+        Track: { Kind: { Video: 'video', Audio: 'audio' }, Source: { Camera: 'camera', ScreenShare: 'screen_share' } },
     };
 });
 
@@ -108,6 +125,7 @@ const call = (overrides: Partial<ChatCall> = {}): ChatCall => ({
 beforeEach(() => {
     rooms.connected = [];
     rooms.sessions = 0;
+    rooms.current = null;
 });
 
 describe('ChatNativeCallLayer', () => {
@@ -161,6 +179,38 @@ describe('ChatNativeCallLayer', () => {
         });
         expect(rooms.sessions).toBe(1);
         expect(await screen.findByLabelText('chat.call.hang-up')).toBeInTheDocument();
+    });
+
+    it('shows a screen shared from a browser, and says whose it is', async () => {
+        const harness = createHarness();
+        const answered = call({
+            status: ChatCallStatus.ACTIVE,
+            answeredAt: '2026-11-14T10:00:05.000Z',
+            participants: call().participants.map((person) => ({ ...person, state: ChatCallParticipantState.JOINED })),
+        });
+        harness.stub.on('GET', '/me/calls/incoming', () => ({ body: [call()] }));
+        harness.stub.on('POST', `/calls/${CALL}/accept`, () => ({
+            body: { call: answered, url: 'ws://livekit.test', token: 'token-1', expiresAt: '2026-11-14T10:10:00Z' },
+        }));
+        harness.stub.on('GET', `/calls/${CALL}`, () => ({ body: answered }));
+
+        render(
+            <ChatNativeProvider capabilities={{}}>
+                <ChatNativeCallLayer />
+            </ChatNativeProvider>,
+            { wrapper: harness.wrapper },
+        );
+
+        fireEvent.click(await screen.findByText('chat.call.answer'));
+        await waitFor(() => {
+            expect(rooms.connected).toHaveLength(1);
+        });
+        act(() => {
+            rooms.current?.emit('participant-connected', { identity: OTHER });
+            rooms.current?.emit('track-subscribed', { kind: 'video', source: 'screen_share' });
+        });
+
+        expect(await screen.findByText('chat.call.sharing {"name":"Giorgi"}')).toBeInTheDocument();
     });
 
     it('shows a group call going on in the thread, and joining it opens the group screen', async () => {

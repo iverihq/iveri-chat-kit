@@ -1,4 +1,4 @@
-import type { Maybe } from '@iveri/contracts';
+import type { Maybe, Nullable } from '@iveri/contracts';
 import {
     ChatCallEndReason,
     ChatCallParticipantState,
@@ -105,6 +105,55 @@ export function orderCallTiles<T extends ChatCallTileCandidate>(
         .map(({ person }) => person);
 
     return { tiles: ordered.slice(0, limit), more: Math.max(0, ordered.length - limit) };
+}
+
+/** Somebody in a group call's room who may be sharing their screen. */
+export interface ChatCallStageCandidate extends ChatCallTileCandidate {
+    /** When their shared screen first reached this device, by its clock; 0 while they share nothing. */
+    sharingSince: number;
+}
+
+/** What a group call draws large: a shared screen, or the person speaking. */
+export type ChatCallStage<T> = { kind: 'screen'; person: T } | { kind: 'speaker'; person: T };
+
+/**
+ * How a group call screen is laid out: one thing large (the stage) and the others small beside it. A shared screen
+ * takes the stage, the one shared last if several are; with none, the person who spoke last does, or before anybody
+ * has spoken the first tile `orderCallTiles` would draw. The small tiles keep `orderCallTiles`' order.
+ *
+ * **The eight still holds**: the stage counts as one of `limit` videos, so the small tiles are at most `limit - 1`.
+ * When a screen is on the stage its sharer also keeps a small tile, because their face is not their screen.
+ */
+export function arrangeCallStage<T extends ChatCallStageCandidate>(
+    people: readonly T[],
+    limit = CHAT_CALL_VIDEO_TILES,
+): { stage: Nullable<ChatCallStage<T>>; tiles: T[]; more: number } {
+    if (people.length === 0) return { stage: null, tiles: [], more: 0 };
+
+    const sharer = people.reduce<Nullable<T>>(
+        (latest, person) =>
+            person.sharingSince > 0 && (latest === null || person.sharingSince > latest.sharingSince) ? person : latest,
+        null,
+    );
+
+    if (sharer !== null) return { stage: { kind: 'screen', person: sharer }, ...orderCallTiles(people, limit - 1) };
+
+    const speaker =
+        people.reduce<Nullable<T>>(
+            (latest, person) =>
+                person.lastSpokeAt > 0 && (latest === null || person.lastSpokeAt > latest.lastSpokeAt)
+                    ? person
+                    : latest,
+            null,
+        ) ?? orderCallTiles(people, 1).tiles[0];
+
+    return {
+        stage: { kind: 'speaker', person: speaker },
+        ...orderCallTiles(
+            people.filter((person) => person !== speaker),
+            limit - 1,
+        ),
+    };
 }
 
 export function callMe(call: ChatCall): Maybe<ChatCallParticipant> {
