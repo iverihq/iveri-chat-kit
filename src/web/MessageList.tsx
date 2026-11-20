@@ -233,7 +233,13 @@ export function MessageList({
                 aria-label={t('chat.thread.messages')}
                 tabIndex={0}
                 onScroll={onScroll}
-                className={cn('min-h-0 flex-1 overflow-y-auto px-3 py-3 [overflow-anchor:none] sm:px-5', FOCUS_RING)}
+                // overflow-x-hidden: a message's toolbar is laid out beside its bubble even while hidden, and
+                // beside a wide bubble it reached past the thread, which then scrolled sideways for good. A thread
+                // only scrolls down; the toolbar moves above the bubble where there is no room (`placeToolbar`).
+                className={cn(
+                    'min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-3 [overflow-anchor:none] sm:px-5',
+                    FOCUS_RING,
+                )}
             >
                 {messages.hasOlder && (
                     <div className="flex justify-center pb-2">

@@ -55,3 +55,10 @@ two lines for the name, which carries the full text in `title`). They were cut w
 and "was active 19 min ago" in Georgian ended mid-word, and a Georgian word cut short reads as a different word. A row's
 message preview, a file's name over its picture and a person's name in a picker list stay on one line: a preview is a
 fragment by nature, and those rows are scanned rather than read.
+
+## A thread never scrolls sideways (2026-11-20)
+
+The message list is `overflow-x-hidden`. A message's toolbar is laid out beside its bubble even while it is invisible,
+so beside a wide bubble (a long Georgian line on a phone) it reached past the thread and the thread scrolled sideways,
+with a scrollbar under the last message, for as long as that message was on screen. `placeToolbar` already moves the
+toolbar above the bubble when there is no room beside it, so clipping the thread loses nothing.
