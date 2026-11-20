@@ -5,7 +5,7 @@ import type { ChatCatalogue } from './catalogue.type.js';
 
 export const CHAT_KIT_DEFAULT_CATALOGUE: ChatCatalogue = {
     namespace: 'chat-kit',
-    version: 12,
+    version: 2,
     sourceLocale: 'en',
     messages: {
         en: {
@@ -166,6 +166,7 @@ export const CHAT_KIT_DEFAULT_CATALOGUE: ChatCatalogue = {
             'chat.label.driver': 'Driver',
             'chat.label.member': 'Member',
             'chat.label.passenger': 'Passenger',
+            'chat.label.sender': 'Sender',
             'chat.label.shop': 'Shop',
             'chat.label.trainer': 'Trainer',
             'chat.lightbox.label': 'Photo {index} of {count}',
@@ -276,6 +277,9 @@ export const CHAT_KIT_DEFAULT_CATALOGUE: ChatCatalogue = {
                 '{kind, select, video {Video call} other {Voice call}} from {caller} could not connect',
             'chat.system.call-missed': 'Missed {kind, select, video {video call} other {voice call}} from {caller}',
             'chat.system.closed': 'This conversation has closed',
+            'chat.system.delivery-delivered': 'The parcel has been delivered',
+            'chat.system.delivery-in-transit': 'The parcel is on its way',
+            'chat.system.delivery-picked-up': 'The courier has collected the parcel',
             'chat.system.group-created': '{actor} created the group',
             'chat.system.group-photo-changed': '{actor} changed the group photo',
             'chat.system.group-photo-removed': '{actor} removed the group photo',
@@ -474,6 +478,7 @@ export const CHAT_KIT_DEFAULT_CATALOGUE: ChatCatalogue = {
             'chat.label.driver': 'მძღოლი',
             'chat.label.member': 'წევრი',
             'chat.label.passenger': 'მგზავრი',
+            'chat.label.sender': 'გამგზავნი',
             'chat.label.shop': 'მაღაზია',
             'chat.label.trainer': 'მწვრთნელი',
             'chat.lightbox.label': 'ფოტო {index} / {count}',
@@ -582,6 +587,9 @@ export const CHAT_KIT_DEFAULT_CATALOGUE: ChatCatalogue = {
                 '{caller}-ის {kind, select, video {ვიდეოზარი} other {ხმოვანი ზარი}} ვერ დაუკავშირდა',
             'chat.system.call-missed': '{caller}-ის უპასუხო {kind, select, video {ვიდეოზარი} other {ხმოვანი ზარი}}',
             'chat.system.closed': 'ეს საუბარი დაიხურა',
+            'chat.system.delivery-delivered': 'ამანათი მიტანილია',
+            'chat.system.delivery-in-transit': 'ამანათი გზაშია',
+            'chat.system.delivery-picked-up': 'კურიერმა ამანათი აიღო',
             'chat.system.group-created': '{actor}-მ ჯგუფი შექმნა',
             'chat.system.group-photo-changed': '{actor}-მ ჯგუფის ფოტო შეცვალა',
             'chat.system.group-photo-removed': '{actor}-მ ჯგუფის ფოტო წაშალა',
@@ -782,6 +790,7 @@ export const CHAT_KIT_DEFAULT_CATALOGUE: ChatCatalogue = {
             'chat.label.driver': 'Водитель',
             'chat.label.member': 'Участник',
             'chat.label.passenger': 'Пассажир',
+            'chat.label.sender': 'Отправитель',
             'chat.label.shop': 'Магазин',
             'chat.label.trainer': 'Тренер',
             'chat.lightbox.label': 'Фото {index} из {count}',
@@ -897,6 +906,9 @@ export const CHAT_KIT_DEFAULT_CATALOGUE: ChatCatalogue = {
             'chat.system.call-missed':
                 'Пропущенный {kind, select, video {видеозвонок} other {голосовой звонок}} от {caller}',
             'chat.system.closed': 'Этот разговор закрыт',
+            'chat.system.delivery-delivered': 'Посылка доставлена',
+            'chat.system.delivery-in-transit': 'Посылка в пути',
+            'chat.system.delivery-picked-up': 'Курьер забрал посылку',
             'chat.system.group-created': '{actor} создал(а) группу',
             'chat.system.group-photo-changed': '{actor} сменил(а) фото группы',
             'chat.system.group-photo-removed': '{actor} удалил(а) фото группы',
