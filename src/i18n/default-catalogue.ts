@@ -5,7 +5,7 @@ import type { ChatCatalogue } from './catalogue.type.js';
 
 export const CHAT_KIT_DEFAULT_CATALOGUE: ChatCatalogue = {
     namespace: 'chat-kit',
-    version: 2,
+    version: 3,
     sourceLocale: 'en',
     messages: {
         en: {
@@ -310,6 +310,7 @@ export const CHAT_KIT_DEFAULT_CATALOGUE: ChatCatalogue = {
             'chat.thread.request.body': 'They will not see that you have read their messages until you accept.',
             'chat.thread.request.title': '{name} would like to talk to you',
             'chat.title.delivery': 'Delivery',
+            'chat.title.gym-personal': 'Personal training',
             'chat.title.hr-direct': 'Work',
             'chat.title.order': 'Order',
             'chat.title.social-direct': 'Ezo',
@@ -620,6 +621,7 @@ export const CHAT_KIT_DEFAULT_CATALOGUE: ChatCatalogue = {
             'chat.thread.request.body': 'სანამ არ მიიღებ, ვერ დაინახავს, რომ მისი შეტყობინებები წაიკითხე.',
             'chat.thread.request.title': '{name} გთავაზობს საუბარს',
             'chat.title.delivery': 'მიწოდება',
+            'chat.title.gym-personal': 'პერსონალური ვარჯიში',
             'chat.title.hr-direct': 'სამსახური',
             'chat.title.order': 'შეკვეთა',
             'chat.title.social-direct': 'ეზო',
@@ -941,6 +943,7 @@ export const CHAT_KIT_DEFAULT_CATALOGUE: ChatCatalogue = {
                 'Пока вы не примете запрос, этот человек не увидит, что вы прочитали сообщения.',
             'chat.thread.request.title': '{name} хочет с вами поговорить',
             'chat.title.delivery': 'Доставка',
+            'chat.title.gym-personal': 'Персональные тренировки',
             'chat.title.hr-direct': 'Работа',
             'chat.title.order': 'Заказ',
             'chat.title.social-direct': 'Эзо',
