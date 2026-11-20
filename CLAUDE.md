@@ -62,3 +62,8 @@ The message list is `overflow-x-hidden`. A message's toolbar is laid out beside 
 so beside a wide bubble (a long Georgian line on a phone) it reached past the thread and the thread scrolled sideways,
 with a scrollbar under the last message, for as long as that message was on screen. `placeToolbar` already moves the
 toolbar above the bubble when there is no room beside it, so clipping the thread loses nothing.
+
+**0.8.2 was not enough inside an Iveri app.** `@iveri/react-kit`'s theme sets `main section > div { overflow-x: auto }` so
+a wide table scrolls inside its panel, and each day's group of messages is exactly that shape. The day group therefore
+scrolled sideways inside a thread that no longer did. It carries `overflow-x-visible` (0.8.3), which beats the theme's
+base layer, so the overflow reaches the thread and is clipped there. The gallery could not show it: it has no `main`.
