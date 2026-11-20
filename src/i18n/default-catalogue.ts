@@ -5,7 +5,7 @@ import type { ChatCatalogue } from './catalogue.type.js';
 
 export const CHAT_KIT_DEFAULT_CATALOGUE: ChatCatalogue = {
     namespace: 'chat-kit',
-    version: 5,
+    version: 6,
     sourceLocale: 'en',
     messages: {
         en: {
@@ -304,6 +304,9 @@ export const CHAT_KIT_DEFAULT_CATALOGUE: ChatCatalogue = {
             'chat.system.group-photo-changed': '{actor} changed the group photo',
             'chat.system.group-photo-removed': '{actor} removed the group photo',
             'chat.system.group-renamed': '{actor} renamed the group to “{title}”',
+            'chat.system.gym-personal-booked': 'Personal session booked: {date}, {time}',
+            'chat.system.gym-personal-cancelled': 'Personal session cancelled: {date}, {time}',
+            'chat.system.gym-personal-reassigned': 'Personal session moved to another trainer: {date}, {time}',
             'chat.system.member-added': '{actor} added {name}',
             'chat.system.member-joined': '{name} joined with the invitation link',
             'chat.system.member-left': '{name} left',
@@ -639,6 +642,9 @@ export const CHAT_KIT_DEFAULT_CATALOGUE: ChatCatalogue = {
             'chat.system.group-photo-changed': '{actor}-მ ჯგუფის ფოტო შეცვალა',
             'chat.system.group-photo-removed': '{actor}-მ ჯგუფის ფოტო წაშალა',
             'chat.system.group-renamed': '{actor}-მ ჯგუფს „{title}“ დაარქვა',
+            'chat.system.gym-personal-booked': 'პერსონალური ვარჯიში დაიჯავშნა: {date}, {time}',
+            'chat.system.gym-personal-cancelled': 'პერსონალური ვარჯიში გაუქმდა: {date}, {time}',
+            'chat.system.gym-personal-reassigned': 'პერსონალური ვარჯიში სხვა მწვრთნელს გადაეცა: {date}, {time}',
             'chat.system.member-added': '{actor}-მ დაამატა {name}',
             'chat.system.member-joined': '{name} მოსაწვევი ბმულით შემოვიდა',
             'chat.system.member-left': '{name} ჯგუფიდან გავიდა',
@@ -983,6 +989,9 @@ export const CHAT_KIT_DEFAULT_CATALOGUE: ChatCatalogue = {
             'chat.system.group-photo-changed': '{actor} сменил(а) фото группы',
             'chat.system.group-photo-removed': '{actor} удалил(а) фото группы',
             'chat.system.group-renamed': '{actor} переименовал(а) группу в «{title}»',
+            'chat.system.gym-personal-booked': 'Персональная тренировка назначена: {date}, {time}',
+            'chat.system.gym-personal-cancelled': 'Персональная тренировка отменена: {date}, {time}',
+            'chat.system.gym-personal-reassigned': 'Персональная тренировка передана другому тренеру: {date}, {time}',
             'chat.system.member-added': '{actor} добавил(а) {name}',
             'chat.system.member-joined': '{name} присоединился(-ась) по ссылке-приглашению',
             'chat.system.member-left': '{name} вышел(-ла) из группы',

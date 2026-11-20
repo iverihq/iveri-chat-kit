@@ -4,6 +4,8 @@ import type { ChatLastMessagePreview, ChatMessage, ChatReplyPreview } from '@ive
 
 import type { ChatTranslate } from '../i18n/index.js';
 
+import { calendarDateWords } from './time-label.js';
+
 /**
  * A system notice in words.
  *
@@ -14,11 +16,27 @@ import type { ChatTranslate } from '../i18n/index.js';
  * neutral sentence instead, which is less informative and never wrong.
  */
 export function systemNoticeText(key: string, variables: Nullable<Record<string, string>>, t: ChatTranslate): string {
-    const text = t(key, variables ?? undefined);
+    const text = t(key, readableVariables(variables, t));
 
     // An unresolved `{actor}` means the variables were not sent (an inbox preview carries none): the words
     // would be a pattern with holes in it, so the neutral notice is shown instead.
     return text === key || /\{[A-Za-z]/u.test(text) ? t('chat.system.unknown') : text;
+}
+
+/**
+ * A notice's variables as the reader reads them. A `date` is a calendar date (`YYYY-MM-DD`) the product sends
+ * rather than words, because its server does not know the reader's language: Gym's personal-session notices
+ * carry the session's day this way. It is written out here ("Thursday, 26 November"); every other variable is
+ * the product's text and shown as written.
+ */
+function readableVariables(
+    variables: Nullable<Record<string, string>>,
+    t: ChatTranslate,
+): Record<string, string> | undefined {
+    if (variables === null) return undefined;
+    if (typeof variables.date !== 'string') return variables;
+
+    return { ...variables, date: calendarDateWords(variables.date, t) };
 }
 
 /** What a message is, in one word, when it has no text of its own to show. */

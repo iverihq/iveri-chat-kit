@@ -2,7 +2,7 @@ import { ChatConversationKind, ChatMessageKind, ChatParticipantRole, ChatRefusal
 import { describe, expect, it } from 'vitest';
 
 import { ChatApiError } from '../client/index.js';
-import { CHAT_KIT_DEFAULT_CATALOGUE } from '../i18n/index.js';
+import { CHAT_KIT_DEFAULT_CATALOGUE, createChatTranslator } from '../i18n/index.js';
 import { conversation, keyTranslate, ME, message, NINO, GIORGI, ownMessage, participant } from '../testing/fixtures.js';
 
 import { calendarDaysBetween } from './calendar.js';
@@ -19,7 +19,7 @@ import { readStateOf } from './read-state.js';
 import { canAcceptRequest, errorText } from './refusal.js';
 import { messageItem, pendingItem, type ChatPendingMessage } from './thread-item.js';
 import { threadRows } from './thread-rows.js';
-import { formatDayLabel, formatDuration, formatInboxTime, formatLastActive } from './time-label.js';
+import { calendarDateWords, formatDayLabel, formatDuration, formatInboxTime, formatLastActive } from './time-label.js';
 import { downsampleWaveform, encodeWaveformField, normaliseWaveform } from './waveform.js';
 
 const TBILISI = 'Asia/Tbilisi';
@@ -186,6 +186,29 @@ describe('excerpts and notices', () => {
             'Nino added Giorgi',
         );
         expect(systemNoticeText('chat.system.taxi-from-the-future', null, known)).toBe('A change');
+    });
+
+    it('writes a notice’s calendar date in the reader’s words, from the kit’s own date keys', () => {
+        const variables = { date: '2026-11-26', time: '18:30' };
+        const key = 'chat.system.gym-personal-booked';
+
+        expect(systemNoticeText(key, variables, createChatTranslator({ locale: 'en' }))).toBe(
+            'Personal session booked: Thursday, 26 November, 18:30',
+        );
+        expect(systemNoticeText(key, variables, createChatTranslator({ locale: 'ru' }))).toBe(
+            'Персональная тренировка назначена: четверг, 26 ноября, 18:30',
+        );
+        expect(systemNoticeText(key, variables, createChatTranslator({ locale: 'ka' }))).toBe(
+            'პერსონალური ვარჯიში დაიჯავშნა: ხუთშაბათი, 26 ნოემბერი, 18:30',
+        );
+    });
+
+    it('leaves a date that is not a calendar date as the product wrote it', () => {
+        const t = createChatTranslator({ locale: 'en' });
+
+        expect(calendarDateWords('2026-02-30', t)).toBe('2026-02-30');
+        expect(calendarDateWords('next Thursday', t)).toBe('next Thursday');
+        expect(calendarDateWords('2027-01-01', t)).toBe('Friday, 1 January');
     });
 
     it('says the whole sentence on an inbox row when the preview carries the notice’s variables', () => {
