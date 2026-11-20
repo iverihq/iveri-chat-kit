@@ -78,6 +78,7 @@ vi.mock('livekit-client', () => {
         RoomEvent: {
             TrackSubscribed: 'track-subscribed',
             TrackUnsubscribed: 'track-unsubscribed',
+            TrackUnpublished: 'track-unpublished',
             TrackMuted: 'track-muted',
             TrackUnmuted: 'track-unmuted',
             ParticipantConnected: 'participant-connected',
@@ -583,8 +584,11 @@ describe('Group calls', () => {
                 expect((shared.attach.mock.calls[0]?.[0] as HTMLVideoElement).className).toContain('object-contain');
             });
 
-            giorgi.tracks.delete('screen_share');
+            // LiveKit's order: the track is announced as unsubscribed while its publication still holds it.
             emit('track-unsubscribed', shared, { source: 'screen_share' }, giorgi);
+            expect(screen.queryByText('chat.call.sharing {"name":"Giorgi"}')).not.toBeInTheDocument();
+            giorgi.tracks.delete('screen_share');
+            emit('track-unpublished', { source: 'screen_share' }, giorgi);
             expect(screen.queryByText('chat.call.sharing {"name":"Giorgi"}')).not.toBeInTheDocument();
         });
     });

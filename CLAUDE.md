@@ -118,6 +118,10 @@ person publish any source.
   the plan does not share from a phone. The native screens draw a screen shared from a browser (1:1: in place of the
   camera; group: above the grid, which keeps one video fewer) and never share one. The native group grid keeps its
   grid and does not take the speaker's stage.
+- **A shared screen counts only from the `TrackSubscribed` that brought it until its `TrackUnsubscribed`** (0.10.1).
+  LiveKit announces the unsubscribe while the publication still holds the track and drops the publication only
+  afterwards (`TrackUnpublished`), so reading the publication alone kept a stopped screen on the stage, black, for
+  as long as the call lasted. Found in the browser, not by the specs, which had removed the track first.
 - **A camera preview attaches only the camera**: `LocalTrackPublished` fires for the screen too, and attaching that to
   my own camera tile showed my screen there.
 - **Not proven in a real room**: the browser pane cannot capture a screen, so the share path is proven in specs with a
