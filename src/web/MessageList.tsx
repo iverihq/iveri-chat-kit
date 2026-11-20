@@ -278,7 +278,9 @@ export function MessageList({
                                     {dayLabel}
                                 </span>
                             </div>
-                            <div className="flex flex-col gap-3">
+                            {/* overflow-x-visible: @iveri/react-kit's theme makes every `main section > div` scroll
+                                sideways (for wide tables), and this is one. The thread clips instead. */}
+                            <div className="flex flex-col gap-3 overflow-x-visible">
                                 {section.runs.map((run) => (
                                     <div key={run.key} className="flex flex-col gap-3">
                                         {run.key === dividerKey && (
