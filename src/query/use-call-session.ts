@@ -1,8 +1,15 @@
 import type { Maybe, UUID } from '@iveri/contracts';
-import { ChatCallStatus, type ChatCall, type ChatCallJoin, type ChatCallKind } from '@iveri/contracts/chat';
+import {
+    ChatCallParticipantState,
+    ChatCallStatus,
+    type ChatCall,
+    type ChatCallJoin,
+    type ChatCallKind,
+} from '@iveri/contracts/chat';
 import { useCallback, useMemo, useState } from 'react';
 
 import type { ChatCallController } from '../provider/index.js';
+import { callMe } from '../util/index.js';
 
 import { useCallActions, useIncomingCalls } from './use-calls.js';
 
@@ -26,7 +33,8 @@ export interface ChatCallSession {
 
 /**
  * Everything a call layer does, for the web and the phone alike, so each only draws: what is ringing for me, the
- * one call under way, starting one (and joining it once it rings), answering and declining.
+ * one call under way, starting one (and joining it once it rings), joining a group call already under way, answering
+ * and declining. Starting a call in a group that already has one answers with that call, which is then joined.
  *
  * One call at a time: a second ringing while a call is under way is not offered, and `chat-api` has told its caller
  * this person is busy. A ring I declined is hidden at once, before the server's answer arrives.
@@ -40,13 +48,30 @@ export function useCallSession(): ChatCallSession {
     const ringing =
         active === null
             ? ((incoming.data ?? []).find(
-                  (call) => call.status === ChatCallStatus.RINGING && !dismissed.has(call.id),
+                  // A group call somebody else answered is under way and still rings for me.
+                  (call) =>
+                      call.status !== ChatCallStatus.ENDED &&
+                      callMe(call)?.state === ChatCallParticipantState.RINGING &&
+                      !dismissed.has(call.id),
               ) ?? null)
             : null;
 
     const controller = useMemo<ChatCallController>(
         () => ({
             activeCallId: active?.callId ?? null,
+            joinCall: (callId: UUID): void => {
+                if (active !== null) return;
+
+                setActive({ callId, join: null });
+                actions
+                    .join(callId)
+                    .then((join) => {
+                        setActive((current) => (current?.callId === callId ? { ...current, join } : current));
+                    })
+                    .catch(() => {
+                        setActive(null);
+                    });
+            },
             startCall: (conversationId: UUID, kind: ChatCallKind): void => {
                 if (active !== null) return;
 

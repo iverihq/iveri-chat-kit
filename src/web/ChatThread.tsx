@@ -15,6 +15,7 @@ import {
 } from '../query/index.js';
 import { conversationHeading, describeError, type ChatMessageWindow } from '../util/index.js';
 
+import { CallBanner } from './CallBanner.js';
 import { ChatComposer, type ChatComposerProps, type ComposerMode } from './ChatComposer.js';
 import { ChatThemeScope } from './ChatThemeScope.js';
 import { Lightbox } from './Lightbox.js';
@@ -200,6 +201,8 @@ function ChatThreadView({
                     onGone={onGone}
                 />
             )}
+
+            {data.isGroup && <CallBanner conversationId={data.id} />}
 
             {data.isRequest && (
                 <div className="border-b border-chat-line bg-chat-surface px-4 py-3 sm:px-6">

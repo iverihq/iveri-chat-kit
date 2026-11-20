@@ -1,8 +1,8 @@
 import type { ChatCall } from '@iveri/contracts/chat';
 import { createPortal } from 'react-dom';
 
-import { useChatText } from '../provider/index.js';
-import { callOther } from '../util/index.js';
+import { useChatContext, useChatText } from '../provider/index.js';
+import { callCaller, callOther, callRingLine } from '../util/index.js';
 import { ChatAvatar } from '../web/ChatAvatar.js';
 import { ChatThemeScope } from '../web/ChatThemeScope.js';
 import { HangUpIcon, PhoneIcon } from '../web/icons.js';
@@ -15,15 +15,18 @@ export interface ChatIncomingCallProps {
 }
 
 /**
- * Somebody is calling: who, voice or video, and Answer or Decline. A card at the bottom of the screen rather than a
+ * Somebody is calling: who (and in a group, which group), voice or video, and Answer or Decline. A card at the bottom of the screen rather than a
  * modal over the page, because what somebody was doing stays theirs until they choose; an `alertdialog`, so a screen
  * reader announces it at once.
  */
 export function ChatIncomingCall({ call, onAnswer, onDecline }: Readonly<ChatIncomingCallProps>): React.JSX.Element {
     const t = useChatText();
-    const other = callOther(call);
+    const { translate } = useChatContext();
+    // In a group the face is whoever started the call, and the line says which group.
+    const other = call.isGroup ? callCaller(call) : callOther(call);
     const name = other?.displayName ?? '';
-    const line = t('chat.call.incoming', { kind: call.kind, name });
+    const ring = callRingLine(call, translate);
+    const line = t(ring.key, ring.values);
 
     return createPortal(
         <ChatThemeScope>
