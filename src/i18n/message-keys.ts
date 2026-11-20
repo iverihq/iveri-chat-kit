@@ -51,6 +51,7 @@ export const CHAT_PRODUCT_TEXT_MESSAGE_KEYS = [
     'chat.title.delivery',
     'chat.title.social-direct',
     'chat.title.hr-direct',
+    'chat.title.gym-personal',
 ] as const;
 
 /**
