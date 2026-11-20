@@ -40,6 +40,12 @@ export const CHAT_SYSTEM_MESSAGE_KEYS = [
     'chat.system.gym-personal-booked',
     'chat.system.gym-personal-cancelled',
     'chat.system.gym-personal-reassigned',
+    'chat.system.restaurant-order-accepted',
+    'chat.system.restaurant-order-ready',
+    'chat.system.restaurant-order-on-its-way',
+    'chat.system.restaurant-order-collected',
+    'chat.system.restaurant-order-delivered',
+    'chat.system.restaurant-order-cancelled',
     'chat.system.closed',
 ] as const;
 
@@ -57,6 +63,8 @@ export const CHAT_PRODUCT_TEXT_MESSAGE_KEYS = [
     'chat.label.sender',
     'chat.label.trainer',
     'chat.label.member',
+    'chat.label.restaurant',
+    'chat.label.guest',
     'chat.title.taxi-ride',
     'chat.title.order',
     'chat.title.delivery',
