@@ -92,3 +92,33 @@ draws them.
   (so signing in does not remount the navigator), and the poll otherwise drew a 401 every four seconds.
 - **Not proven in a real room on a phone**: the native grid is checked in `react-native-web` only, and no group call's
   audio or video has been heard (the browser pane blocks the microphone and camera).
+
+## Screen sharing and the speaker's stage (2026-11-21, 0.10.0)
+
+The calls plan's last two phase 2 pieces, on the web. `chat-api` needed nothing: its LiveKit token already lets a
+person publish any source.
+
+- **Anybody may share, and the screen shared last is the one drawn large.** LiveKit lets every participant publish a
+  screen at once; refusing a second sharer would need a server-side rule (a client-side check races), so nothing is
+  refused. `arrangeCallStage` puts the newest share on the stage; when it stops, the one before it comes back.
+- **The stage counts as one of the eight videos.** With a speaker on the stage the row holds at most seven others; with
+  a screen on the stage, the sharer also keeps a small tile (their face is not their screen) and the row is still seven.
+- **The stage is whoever spoke last**, never me, and before anybody speaks the first tile `orderCallTiles` would draw.
+  LiveKit's active-speaker event already debounces, so the stage moves with the conversation rather than every breath.
+- **Whether I am sharing is read from the room's events**, never set by the toggle: the browser's own "Stop sharing" bar
+  ends the track, LiveKit unpublishes it (`handleTrackEnded`), and the screen hears `LocalTrackUnpublished`. Closing the
+  browser's picker without choosing rejects, which is swallowed.
+- **My own screen is not drawn back to me**, only a line saying it is shared, with Stop sharing beside it: a screen
+  showing itself recurses.
+- **No sound from the shared screen** (`audio: false`): a shared tab playing the call back echoes, and the 1:1 screen has
+  one `<audio>` for the other person.
+- **A shared screen is `object-contain`**, never cropped: its words are what was shared. In a 1:1 call it replaces the
+  other person's camera, in either kind of call.
+- **The control is hidden where `navigator.mediaDevices.getDisplayMedia` is missing**, which is every phone browser;
+  the plan does not share from a phone. The native screens draw a screen shared from a browser (1:1: in place of the
+  camera; group: above the grid, which keeps one video fewer) and never share one. The native group grid keeps its
+  grid and does not take the speaker's stage.
+- **A camera preview attaches only the camera**: `LocalTrackPublished` fires for the screen too, and attaching that to
+  my own camera tile showed my screen there.
+- **Not proven in a real room**: the browser pane cannot capture a screen, so the share path is proven in specs with a
+  stood-in room (published, stopped by the browser, drawn for others, staged in a group).

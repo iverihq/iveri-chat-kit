@@ -371,3 +371,21 @@ export function SwitchCameraIcon(props: IconProps): React.JSX.Element {
         </Glyph>
     );
 }
+
+export function ScreenShareIcon(props: IconProps): React.JSX.Element {
+    return (
+        <Glyph {...props}>
+            <rect x="2.5" y="3.5" width="15" height="10.5" rx="1.8" />
+            <path d="M7 17h6M10 14v3M10 11V6.5M7.8 8.7 10 6.5l2.2 2.2" />
+        </Glyph>
+    );
+}
+
+export function ScreenShareOffIcon(props: IconProps): React.JSX.Element {
+    return (
+        <Glyph {...props}>
+            <rect x="2.5" y="3.5" width="15" height="10.5" rx="1.8" />
+            <path d="M7 17h6M10 14v3M8 6.8l4 4M12 6.8l-4 4" />
+        </Glyph>
+    );
+}

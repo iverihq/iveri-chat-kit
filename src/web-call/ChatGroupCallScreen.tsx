@@ -1,18 +1,25 @@
 import type { Maybe, Nullable, UUID } from '@iveri/contracts';
-import { ChatCallKind, ChatCallStatus, type ChatCallJoin, type ChatCallParticipant } from '@iveri/contracts/chat';
+import {
+    ChatCallKind,
+    ChatCallStatus,
+    type ChatCallJoin,
+    type ChatCallParticipant,
+    type ChatImage,
+} from '@iveri/contracts/chat';
 import type { VideoTrack } from 'livekit-client';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { useChatContext, useChatText } from '../provider/index.js';
 import { useCall, useCallActions } from '../query/index.js';
-import { callEndLine, callMe, callPhase, callTitle, formatCallClock, orderCallTiles } from '../util/index.js';
+import { arrangeCallStage, callEndLine, callMe, callPhase, callTitle, formatCallClock } from '../util/index.js';
 import { ChatAvatar } from '../web/ChatAvatar.js';
 import { ChatThemeScope } from '../web/ChatThemeScope.js';
 import { HangUpIcon, MicIcon, MicOffIcon, VideoIcon, VideoOffIcon } from '../web/icons.js';
 import { cn, FOCUS_RING } from '../web/style.js';
 
-import { useGroupCallMedia, type ChatGroupCallPerson } from './use-group-call-media.js';
+import { ScreenShareButton, SharingMyScreen } from './ScreenShareButton.js';
+import { useGroupCallMedia } from './use-group-call-media.js';
 
 const END_LINE_MS = 2_500;
 
@@ -23,21 +30,28 @@ const CONTROL_SHAPE = cn(
 const CONTROL = cn(CONTROL_SHAPE, 'bg-white/15 hover:bg-white/25');
 const LEAVE = cn(CONTROL_SHAPE, 'bg-critical hover:brightness-95');
 
-/** Columns by how many tiles there are, so two sit side by side and eight fill a screen. */
-function gridColumns(tiles: number): string {
-    if (tiles <= 1) return 'grid-cols-1';
-    if (tiles <= 4) return 'grid-cols-2';
-
-    return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4';
-}
-
+/**
+ * One video in a group call, or the person's picture while there is none. `stage` is the large one; the others sit in a
+ * row under it. A shared screen is fitted whole (`contain`), never cropped, because its words are what was shared.
+ */
 function Tile({
-    person,
-    participant,
-}: Readonly<{ person: ChatGroupCallPerson; participant: Maybe<ChatCallParticipant> }>): React.JSX.Element {
+    track,
+    name,
+    avatar,
+    label,
+    isSpeaking,
+    isStage,
+    isScreen = false,
+}: Readonly<{
+    track: Nullable<VideoTrack>;
+    name: string;
+    avatar: Nullable<ChatImage>;
+    label: string;
+    isSpeaking: boolean;
+    isStage: boolean;
+    isScreen?: boolean;
+}>): React.JSX.Element {
     const video = useRef<HTMLVideoElement | null>(null);
-    const track: Nullable<VideoTrack> = person.video;
-    const name = participant?.displayName ?? '';
 
     useEffect(() => {
         const element = video.current;
@@ -52,21 +66,29 @@ function Tile({
     }, [track]);
 
     return (
-        <li
+        <div
             className={cn(
-                'relative flex aspect-video min-h-0 items-center justify-center overflow-hidden rounded-chat-card bg-white/5',
-                person.isSpeaking && 'ring-2 ring-chat-accent',
+                'relative flex items-center justify-center overflow-hidden rounded-chat-card bg-white/5',
+                isStage ? 'min-h-0 flex-1' : 'aspect-video w-36 shrink-0 sm:w-44',
+                isSpeaking && 'ring-2 ring-chat-accent',
+                isScreen && 'bg-black',
             )}
         >
             {track === null ? (
-                <ChatAvatar name={name} image={participant?.avatar ?? null} size="lg" />
+                <ChatAvatar name={name} image={avatar} size={isStage ? 'lg' : 'md'} />
             ) : (
-                <video ref={video} autoPlay playsInline muted className="absolute inset-0 h-full w-full object-cover" />
+                <video
+                    ref={video}
+                    autoPlay
+                    playsInline
+                    muted
+                    className={cn('absolute inset-0 h-full w-full', isScreen ? 'object-contain' : 'object-cover')}
+                />
             )}
             <span className="absolute bottom-2 left-2 max-w-[calc(100%-1rem)] truncate rounded-full bg-black/50 px-2 py-0.5 text-caption text-white">
-                {name}
+                {label}
             </span>
-        </li>
+        </div>
     );
 }
 
@@ -77,8 +99,9 @@ export interface ChatGroupCallScreenProps {
 }
 
 /**
- * A group call, over the whole app: the group's name and the clock, a grid of up to eight people (video first, then
- * whoever spoke last, the speaker outlined), how many more are in it, my own camera small, and mute, camera and leave.
+ * A group call, over the whole app: the group's name and the clock, one person or screen large (a shared screen, else
+ * whoever spoke last) with the others in a row under it, eight videos at most (`arrangeCallStage`), how many more are in
+ * it, my own camera small, and mute, camera, share my screen (where the browser can) and leave.
  * Leaving leaves the call to the others; the screen closes once I have left or the call has ended.
  */
 export function ChatGroupCallScreen({
@@ -128,7 +151,8 @@ export function ChatGroupCallScreen({
     const title = callTitle(call, translate);
     const phase = callPhase(call, media.isConnected);
     const byUser = new Map(call.participants.map((participant) => [participant.userId, participant]));
-    const { tiles, more } = orderCallTiles(media.people);
+    const { stage, tiles, more } = arrangeCallStage(media.people);
+    const who = (identity: string): Maybe<ChatCallParticipant> => byUser.get(identity as UUID) ?? null;
     const leave = (): void => {
         setLeft(true);
         void actions.end(callId).catch(() => undefined);
@@ -170,22 +194,40 @@ export function ChatGroupCallScreen({
                         </p>
                     )}
                 </header>
-                <div className="relative flex min-h-0 flex-1 flex-col justify-center p-4">
+                <div className="relative flex min-h-0 flex-1 flex-col justify-center gap-3 p-4">
+                    {stage !== null && phase !== 'ended' && (
+                        <Tile
+                            track={stage.kind === 'screen' ? stage.person.screen : stage.person.video}
+                            name={who(stage.person.identity)?.displayName ?? ''}
+                            avatar={who(stage.person.identity)?.avatar ?? null}
+                            label={
+                                stage.kind === 'screen'
+                                    ? t('chat.call.sharing', { name: who(stage.person.identity)?.displayName ?? '' })
+                                    : (who(stage.person.identity)?.displayName ?? '')
+                            }
+                            isSpeaking={stage.kind === 'speaker' && stage.person.isSpeaking}
+                            isStage
+                            isScreen={stage.kind === 'screen'}
+                        />
+                    )}
                     {tiles.length > 0 && phase !== 'ended' && (
-                        <ul className={cn('mx-auto grid w-full max-w-6xl gap-3', gridColumns(tiles.length))}>
+                        <ul className="flex shrink-0 justify-center-safe gap-3 overflow-x-auto pb-1">
                             {tiles.map((person) => (
-                                <Tile
-                                    key={person.identity}
-                                    person={person}
-                                    participant={byUser.get(person.identity as UUID) ?? null}
-                                />
+                                <li key={person.identity}>
+                                    <Tile
+                                        track={person.video}
+                                        name={who(person.identity)?.displayName ?? ''}
+                                        avatar={who(person.identity)?.avatar ?? null}
+                                        label={who(person.identity)?.displayName ?? ''}
+                                        isSpeaking={person.isSpeaking}
+                                        isStage={false}
+                                    />
+                                </li>
                             ))}
                         </ul>
                     )}
                     {more > 0 && phase !== 'ended' && (
-                        <p className="mt-3 text-center text-label text-white/80">
-                            {t('chat.call.more', { count: more })}
-                        </p>
+                        <p className="text-center text-label text-white/80">{t('chat.call.more', { count: more })}</p>
                     )}
                     {kind === ChatCallKind.VIDEO && (
                         <video
@@ -195,12 +237,13 @@ export function ChatGroupCallScreen({
                             muted
                             aria-label={me?.displayName}
                             className={cn(
-                                'absolute bottom-4 right-4 z-10 aspect-[3/4] w-24 rounded-chat-card bg-black/40 object-cover shadow-lg sm:w-36',
+                                'absolute right-6 top-6 z-10 aspect-[3/4] w-20 rounded-chat-card bg-black/40 object-cover shadow-lg sm:w-32',
                                 media.isSpeaking && 'ring-2 ring-chat-accent',
                                 (!media.isCameraOn || phase === 'ended') && 'hidden',
                             )}
                         />
                     )}
+                    {media.isSharingScreen && phase !== 'ended' && <SharingMyScreen onStop={media.toggleScreenShare} />}
                 </div>
                 {phase !== 'ended' && (
                     <div className="relative z-10 flex items-center justify-center gap-5 pb-[max(2rem,env(safe-area-inset-bottom))]">
@@ -227,6 +270,13 @@ export function ChatGroupCallScreen({
                                     <VideoOffIcon className="h-6 w-6" />
                                 )}
                             </button>
+                        )}
+                        {media.canShareScreen && media.isConnected && (
+                            <ScreenShareButton
+                                isSharing={media.isSharingScreen}
+                                onToggle={media.toggleScreenShare}
+                                className={CONTROL}
+                            />
                         )}
                         <button type="button" aria-label={t('chat.call.leave')} onClick={leave} className={LEAVE}>
                             <HangUpIcon className="h-6 w-6" />

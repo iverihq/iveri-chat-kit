@@ -111,6 +111,10 @@ const INTERFACE_KEYS = [
     'chat.call.join',
     'chat.call.leave',
     'chat.call.full',
+    'chat.call.share-screen',
+    'chat.call.stop-sharing',
+    'chat.call.sharing',
+    'chat.call.sharing-mine',
 
     'chat.common.cancel',
     'chat.common.close',

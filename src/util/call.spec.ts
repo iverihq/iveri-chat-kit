@@ -20,6 +20,7 @@ import {
     formatCallClock,
     isCallFull,
     orderCallTiles,
+    arrangeCallStage,
 } from './call.js';
 
 const CALLER = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -198,5 +199,64 @@ describe('orderCallTiles', () => {
 
         expect(tiles).toHaveLength(CHAT_CALL_VIDEO_TILES);
         expect(more).toBe(3);
+    });
+});
+
+describe('arrangeCallStage', () => {
+    const person = (
+        identity: string,
+        overrides: { hasVideo?: boolean; lastSpokeAt?: number; sharingSince?: number } = {},
+    ) => ({
+        identity,
+        hasVideo: overrides.hasVideo ?? false,
+        isSpeaking: false,
+        lastSpokeAt: overrides.lastSpokeAt ?? 0,
+        sharingSince: overrides.sharingSince ?? 0,
+    });
+
+    it('has no stage in an empty room', () => {
+        expect(arrangeCallStage([])).toEqual({ stage: null, tiles: [], more: 0 });
+    });
+
+    it('puts whoever spoke last on the stage and the others beside it', () => {
+        const { stage, tiles } = arrangeCallStage([
+            person('a', { lastSpokeAt: 3 }),
+            person('b', { lastSpokeAt: 9 }),
+            person('c', { hasVideo: true }),
+        ]);
+
+        expect(stage).toMatchObject({ kind: 'speaker', person: { identity: 'b' } });
+        expect(tiles.map((t) => t.identity)).toEqual(['c', 'a']);
+    });
+
+    it('before anybody has spoken, stages the first tile the grid would draw', () => {
+        const { stage, tiles } = arrangeCallStage([person('a'), person('b', { hasVideo: true })]);
+
+        expect(stage).toMatchObject({ kind: 'speaker', person: { identity: 'b' } });
+        expect(tiles.map((t) => t.identity)).toEqual(['a']);
+    });
+
+    it('gives the stage to a shared screen, the latest one, and keeps its sharer as a tile', () => {
+        const { stage, tiles } = arrangeCallStage([
+            person('a', { sharingSince: 5 }),
+            person('b', { lastSpokeAt: 9 }),
+            person('c', { sharingSince: 7 }),
+        ]);
+
+        expect(stage).toMatchObject({ kind: 'screen', person: { identity: 'c' } });
+        expect(tiles.map((t) => t.identity)).toEqual(['b', 'a', 'c']);
+    });
+
+    it('draws eight videos at most, the stage among them', () => {
+        const people = Array.from({ length: 11 }, (_, index) => person(String(index)));
+        const spoken = arrangeCallStage(people);
+
+        expect(spoken.tiles).toHaveLength(CHAT_CALL_VIDEO_TILES - 1);
+        expect(spoken.more).toBe(3);
+
+        const shared = arrangeCallStage([...people.slice(1), person('s', { sharingSince: 1 })]);
+
+        expect(shared.tiles).toHaveLength(CHAT_CALL_VIDEO_TILES - 1);
+        expect(shared.more).toBe(4);
     });
 });

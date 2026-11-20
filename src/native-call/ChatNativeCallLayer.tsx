@@ -15,6 +15,7 @@ import {
     callPhase,
     callRingLine,
     callTitle,
+    arrangeCallStage,
     formatCallClock,
     initialsOf,
     orderCallTiles,
@@ -188,7 +189,11 @@ function CallScreen({ active, onClose }: Readonly<{ active: ChatActiveCall; onCl
                     : phase === 'live' && call.answeredAt !== null
                       ? formatCallClock(now - new Date(call.answeredAt).getTime())
                       : t('chat.call.connecting');
-    const showsOtherVideo = kind === ChatCallKind.VIDEO && media.otherVideo !== null && phase === 'live';
+    // A screen shared from a browser is shown whole, in place of their camera, in any kind of call.
+    const showsOtherScreen = media.otherScreen !== null && phase === 'live';
+    const showsOtherVideo =
+        kind === ChatCallKind.VIDEO && media.otherVideo !== null && phase === 'live' && !showsOtherScreen;
+    const showsLarge = showsOtherVideo || showsOtherScreen;
 
     return (
         <Modal animationType="fade" presentationStyle="fullScreen" onRequestClose={() => undefined}>
@@ -198,6 +203,13 @@ function CallScreen({ active, onClose }: Readonly<{ active: ChatActiveCall; onCl
                         videoTrack={media.otherVideo ?? undefined}
                         style={StyleSheet.absoluteFill}
                         objectFit="cover"
+                    />
+                )}
+                {showsOtherScreen && (
+                    <VideoView
+                        videoTrack={media.otherScreen ?? undefined}
+                        style={StyleSheet.absoluteFill}
+                        objectFit="contain"
                     />
                 )}
                 {kind === ChatCallKind.VIDEO && media.myVideo !== null && media.isCameraOn && phase !== 'ended' && (
@@ -210,12 +222,15 @@ function CallScreen({ active, onClose }: Readonly<{ active: ChatActiveCall; onCl
                     />
                 )}
                 <SafeAreaView style={styles.fill}>
-                    <View style={[styles.middle, showsOtherVideo && styles.top]}>
-                        {!showsOtherVideo && call !== undefined && <Face call={call} size={96} />}
+                    <View style={[styles.middle, showsLarge && styles.top]}>
+                        {!showsLarge && call !== undefined && <Face call={call} size={96} />}
                         <ChatText style={styles.name}>{name}</ChatText>
                         <ChatText accessibilityLiveRegion="polite" style={styles.status}>
                             {status}
                         </ChatText>
+                        {showsOtherScreen && (
+                            <ChatText style={styles.sharing}>{t('chat.call.sharing', { name })}</ChatText>
+                        )}
                     </View>
                     {phase !== 'ended' && (
                         <View style={styles.controls}>
@@ -342,7 +357,12 @@ function GroupCallScreen({
     const title = call === undefined ? '' : callTitle(call, translate);
     const phase = call === undefined ? 'connecting' : callPhase(call, media.isConnected);
     const byUser = new Map((call?.participants ?? []).map((participant) => [participant.userId, participant]));
-    const { tiles, more } = orderCallTiles(media.people);
+    // A screen shared from a browser goes above the grid, which then keeps one video fewer, so eight still holds.
+    const arranged = arrangeCallStage(media.people);
+    const sharer = arranged.stage?.kind === 'screen' ? arranged.stage.person : null;
+    const { tiles, more } = sharer === null ? orderCallTiles(media.people) : arranged;
+    const sharedScreen = sharer?.screen ?? null;
+    const sharerName = sharer === null ? '' : (byUser.get(sharer.identity as UUID)?.displayName ?? '');
     const columns = columnsFor(tiles.length);
     const status =
         call === undefined
@@ -369,6 +389,14 @@ function GroupCallScreen({
                             {status}
                         </ChatText>
                     </View>
+                    {phase !== 'ended' && sharedScreen !== null && (
+                        <View style={styles.sharedScreen}>
+                            <VideoView videoTrack={sharedScreen} style={StyleSheet.absoluteFill} objectFit="contain" />
+                            <ChatText numberOfLines={2} style={styles.tileName}>
+                                {t('chat.call.sharing', { name: sharerName })}
+                            </ChatText>
+                        </View>
+                    )}
                     {phase !== 'ended' && (
                         <FlatList
                             key={columns}
@@ -495,6 +523,23 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
     },
     initials: { alignItems: 'center', justifyContent: 'center' },
+    sharing: {
+        color: '#ffffff',
+        fontSize: 14,
+        backgroundColor: 'rgba(0,0,0,0.45)',
+        borderRadius: 12,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        overflow: 'hidden',
+    },
+    sharedScreen: {
+        aspectRatio: 16 / 9,
+        marginHorizontal: 12,
+        marginBottom: 8,
+        borderRadius: 14,
+        overflow: 'hidden',
+        backgroundColor: '#000000',
+    },
     groupHeader: { alignItems: 'center', gap: 6, paddingHorizontal: 24, paddingTop: 24, paddingBottom: 12 },
     grid: { paddingHorizontal: 8, gap: 8 },
     tile: {

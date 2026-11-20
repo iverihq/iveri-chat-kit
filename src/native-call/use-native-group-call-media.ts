@@ -4,13 +4,15 @@ import { AudioSession } from '@livekit/react-native';
 import { Room, RoomEvent, Track, type RemoteParticipant, type VideoTrack } from 'livekit-client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import type { ChatCallTileCandidate } from '../util/index.js';
+import type { ChatCallStageCandidate } from '../util/index.js';
 
 import type { ChatNativeCallMediaFailure } from './use-native-call-media.js';
 
 /** Somebody else in a group call's room, as the phone's grid draws them. */
-export interface ChatNativeGroupCallPerson extends ChatCallTileCandidate {
+export interface ChatNativeGroupCallPerson extends ChatCallStageCandidate {
     video: Nullable<VideoTrack>;
+    /** Their shared screen, from a browser; a phone never shares one. */
+    screen: Nullable<VideoTrack>;
 }
 
 export interface ChatNativeGroupCallMedia {
@@ -25,16 +27,28 @@ export interface ChatNativeGroupCallMedia {
     switchCamera: () => void;
 }
 
-function personOf(participant: RemoteParticipant, lastSpokeAt: Map<string, number>): ChatNativeGroupCallPerson {
-    const camera = participant.getTrackPublication(Track.Source.Camera);
-    const video = camera?.isSubscribed === true && !camera.isMuted ? (camera.videoTrack ?? null) : null;
+function receivedVideo(participant: RemoteParticipant, source: Track.Source): Nullable<VideoTrack> {
+    const publication = participant.getTrackPublication(source);
+
+    return publication?.isSubscribed === true && !publication.isMuted ? (publication.videoTrack ?? null) : null;
+}
+
+function personOf(
+    participant: RemoteParticipant,
+    lastSpokeAt: Map<string, number>,
+    sharingSince: Map<string, number>,
+): ChatNativeGroupCallPerson {
+    const video = receivedVideo(participant, Track.Source.Camera);
+    const screen = receivedVideo(participant, Track.Source.ScreenShare);
 
     return {
         identity: participant.identity,
         hasVideo: video !== null,
         isSpeaking: participant.isSpeaking,
         lastSpokeAt: lastSpokeAt.get(participant.identity) ?? 0,
+        sharingSince: screen === null ? 0 : (sharingSince.get(participant.identity) ?? 1),
         video,
+        screen,
     };
 }
 
@@ -62,17 +76,26 @@ export function useNativeGroupCallMedia(join: Maybe<ChatCallJoin>, kind: ChatCal
         const left = new AbortController();
         const isLeft = (): boolean => left.signal.aborted;
         const lastSpokeAt = new Map<string, number>();
+        const sharingSince = new Map<string, number>();
         const refresh = (): void => {
             if (isLeft()) return;
             setPeople(
-                [...current.remoteParticipants.values()].map((participant) => personOf(participant, lastSpokeAt)),
+                [...current.remoteParticipants.values()].map((participant) =>
+                    personOf(participant, lastSpokeAt, sharingSince),
+                ),
             );
         };
 
         room.current = current;
         current
-            .on(RoomEvent.TrackSubscribed, refresh)
-            .on(RoomEvent.TrackUnsubscribed, refresh)
+            .on(RoomEvent.TrackSubscribed, (track, _publication, participant) => {
+                if (track.source === Track.Source.ScreenShare) sharingSince.set(participant.identity, Date.now());
+                refresh();
+            })
+            .on(RoomEvent.TrackUnsubscribed, (track, _publication, participant) => {
+                if (track.source === Track.Source.ScreenShare) sharingSince.delete(participant.identity);
+                refresh();
+            })
             .on(RoomEvent.TrackMuted, refresh)
             .on(RoomEvent.TrackUnmuted, refresh)
             .on(RoomEvent.ParticipantConnected, refresh)
@@ -84,7 +107,7 @@ export function useNativeGroupCallMedia(join: Maybe<ChatCallJoin>, kind: ChatCal
                 refresh();
             })
             .on(RoomEvent.LocalTrackPublished, (publication) => {
-                if (publication.track?.kind === Track.Kind.Video) setMyVideo(publication.track as VideoTrack);
+                if (publication.source === Track.Source.Camera) setMyVideo(publication.track as VideoTrack);
             })
             .on(RoomEvent.LocalTrackUnpublished, (publication) => {
                 if (publication.track?.kind === Track.Kind.Video) setMyVideo(null);
