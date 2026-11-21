@@ -7,6 +7,7 @@ import { useChatCallController, useChatContext, useChatText, useNow } from '../p
 import { useCallHistory } from '../query/index.js';
 import {
     CALL_HISTORY_KEYS,
+    callHistoryDuration,
     callHistoryOutcome,
     describeError,
     formatDayLabel,
@@ -41,7 +42,8 @@ export function ChatCallHistoryScreen({
     const renderRow = ({ item: entry }: { item: ChatCallHistoryEntry }): React.JSX.Element => {
         const outcome = callHistoryOutcome(entry);
         const isMissed = outcome === 'missed';
-        const duration = entry.durationSeconds === null ? null : formatDuration(entry.durationSeconds * 1000);
+        const seconds = callHistoryDuration(entry);
+        const duration = seconds === null ? null : formatDuration(seconds * 1000);
         const arrow = entry.direction === ChatCallDirection.OUTGOING ? '↗' : '↙';
 
         return (

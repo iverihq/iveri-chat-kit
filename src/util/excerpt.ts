@@ -1,4 +1,4 @@
-import type { Nullable } from '@iveri/contracts';
+import type { Maybe, Nullable, UUID } from '@iveri/contracts';
 import { ChatMessageKind } from '@iveri/contracts/chat';
 import type { ChatLastMessagePreview, ChatMessage, ChatReplyPreview } from '@iveri/contracts/chat';
 
@@ -15,12 +15,42 @@ import { calendarDateWords } from './time-label.js';
  * key itself, which would put a raw key on somebody's screen; it is replaced by a
  * neutral sentence instead, which is less informative and never wrong.
  */
-export function systemNoticeText(key: string, variables: Nullable<Record<string, string>>, t: ChatTranslate): string {
+export function systemNoticeText(
+    key: string,
+    variables: Nullable<Record<string, string>>,
+    t: ChatTranslate,
+    { myUserId }: { myUserId?: Maybe<UUID> } = {},
+): string {
+    if (isMyUnansweredCall(key, variables, myUserId)) {
+        return t('chat.calls.line.not-answered', { kind: variables?.kind ?? '' });
+    }
+
     const text = t(key, readableVariables(variables, t));
 
     // An unresolved `{actor}` means the variables were not sent (an inbox preview carries none): the words
     // would be a pattern with holes in it, so the neutral notice is shown instead.
     return text === key || /\{[A-Za-z]/u.test(text) ? t('chat.system.unknown') : text;
+}
+
+/** The call notices whose words are the other person's view of a call nobody took. */
+const UNANSWERED_CALL_NOTICES: ReadonlySet<string> = new Set(['chat.system.call-missed', 'chat.system.call-declined']);
+
+/**
+ * Whether this notice is about my own call that nobody took. `chat-api` writes one notice for both people, worded
+ * for whoever was rung ("Missed video call from Nino"); read by Nino it named her as having missed her own call.
+ * The notice names the caller by id (`callerId`, since chat-api 2026-11-21), and the caller reads it as the Calls
+ * list does: not answered. A notice from before carries no id and reads as it always did.
+ */
+function isMyUnansweredCall(
+    key: string,
+    variables: Nullable<Record<string, string>>,
+    myUserId: Maybe<UUID> | undefined,
+): boolean {
+    if (!UNANSWERED_CALL_NOTICES.has(key) || variables === null || myUserId === null || myUserId === undefined) {
+        return false;
+    }
+
+    return typeof variables.callerId === 'string' && variables.callerId.toLowerCase() === myUserId.toLowerCase();
 }
 
 /**
@@ -52,12 +82,14 @@ function kindLabel(kind: ChatMessageKind, t: ChatTranslate): Nullable<string> {
 export function lastMessageExcerpt(
     preview: Nullable<ChatLastMessagePreview>,
     t: ChatTranslate,
-    { isGroup }: { isGroup: boolean },
+    { isGroup, myUserId }: { isGroup: boolean; myUserId?: Maybe<UUID> },
 ): string {
     if (preview === null) return t('chat.preview.empty');
     // `systemVariables` arrived with contracts 0.76; a chat-api from before it sends none, and the notice then
     // reads as the neutral sentence rather than a pattern with holes.
-    if (preview.systemKey !== null) return systemNoticeText(preview.systemKey, preview.systemVariables ?? null, t);
+    if (preview.systemKey !== null) {
+        return systemNoticeText(preview.systemKey, preview.systemVariables ?? null, t, { myUserId });
+    }
     if (preview.isDeleted) return t('chat.preview.deleted');
 
     const text =

@@ -1,3 +1,4 @@
+import type { Nullable } from '@iveri/contracts';
 import { ChatCallDirection, ChatCallEndReason, ChatCallStatus, type ChatCallHistoryEntry } from '@iveri/contracts/chat';
 
 import type { ChatKitMessageKey } from '../i18n/index.js';
@@ -30,4 +31,14 @@ export function callHistoryOutcome(entry: ChatCallHistoryEntry): ChatCallHistory
     }
 
     return connected ? 'outgoing' : 'not-answered';
+}
+
+/**
+ * How long a call lasted, in seconds, or null when there is nothing to show: a call still going, or one that never
+ * connected. An answered call that never connected ended `failed` with nobody heard, and drew "· 0:00".
+ */
+export function callHistoryDuration(entry: ChatCallHistoryEntry): Nullable<number> {
+    if (entry.status !== ChatCallStatus.ENDED || entry.endReason !== ChatCallEndReason.COMPLETED) return null;
+
+    return entry.durationSeconds;
 }

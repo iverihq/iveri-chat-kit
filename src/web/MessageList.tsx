@@ -168,7 +168,9 @@ export function MessageList({
             return (
                 <div key={run.key} className="flex justify-center px-6 py-1" data-seq={first.message.seq}>
                     <p className="max-w-md rounded-chat-control bg-chat-sunken px-3 py-1.5 text-center text-small text-chat-ink-soft">
-                        {systemNoticeText(first.message.systemKey ?? '', first.message.systemVariables, translate)}
+                        {systemNoticeText(first.message.systemKey ?? '', first.message.systemVariables, translate, {
+                            myUserId: currentUserId,
+                        })}
                     </p>
                 </div>
             );

@@ -163,3 +163,13 @@ variables. Only the step the order has just reached is told, so the kit never dr
 - **Call history**: `useCallHistory`, `ChatCallHistory` (web) and `ChatCallHistoryScreen` (native), with a Missed
   folder; `callHistoryOutcome` decides the words from my side, trusting the server's `isMissed`.
 - **Not seen**: the phone screens on a phone (specs and react-native-web only).
+
+## A call notice is worded from the reader's side (2026-11-21, 0.12.1)
+
+`chat-api` writes one notice per call for everybody in the conversation, worded for whoever was rung, so Nino's inbox
+read "Missed video call from Nino" about her own call. Every call notice now carries `{callerId}` (chat-api #21), and
+`systemNoticeText` takes `{ myUserId }`: the caller reads `call-missed` and `call-declined` as the Calls list does,
+"Video call, not answered" (`chat.calls.line.not-answered`), and the other person reads them unchanged. The inbox row,
+the web thread and the phone thread pass `currentUserId`; a notice from before carries no id and reads as it did.
+`call-busy` and `call-failed` already read truthfully from either side. **A call's length shows only for a completed
+call** (`callHistoryDuration`): one answered and never connected ended `failed` and drew "· 0:00".
