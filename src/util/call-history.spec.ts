@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 
 import { CONVERSATION, uuid } from '../testing/fixtures.js';
 
-import { callHistoryOutcome } from './call-history.js';
+import { callHistoryDuration, callHistoryOutcome } from './call-history.js';
 
 const entry = (overrides: Partial<ChatCallHistoryEntry>): ChatCallHistoryEntry => ({
     id: uuid(),
@@ -50,5 +50,12 @@ describe('call history', () => {
                 entry({ direction: ChatCallDirection.OUTGOING, endReason: ChatCallEndReason.MISSED, isMissed: false }),
             ),
         ).toBe('not-answered');
+    });
+
+    it('gives a length only to a call that connected', () => {
+        expect(callHistoryDuration(entry({}))).toBe(65);
+        expect(callHistoryDuration(entry({ endReason: ChatCallEndReason.FAILED, durationSeconds: 0 }))).toBeNull();
+        expect(callHistoryDuration(entry({ status: ChatCallStatus.ACTIVE, endReason: null }))).toBeNull();
+        expect(callHistoryDuration(entry({ durationSeconds: null }))).toBeNull();
     });
 });

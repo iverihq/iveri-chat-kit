@@ -30,7 +30,7 @@ function Row({
     onPress,
 }: Readonly<{ conversation: ChatConversationSummary; now: Date; onPress: () => void }>): React.JSX.Element {
     const t = useChatText();
-    const { translate, locale, timeZone } = useChatContext();
+    const { translate, locale, timeZone, currentUserId } = useChatContext();
     const { theme } = useChatNative();
     const c = theme.color;
     const heading = conversationHeading(conversation, translate);
@@ -40,6 +40,7 @@ function Row({
     const excerpt = lastMessageExcerpt(conversation.lastMessage, translate, {
         // A sender's name only helps where more than two people talk: in a ride's chat it is the title already.
         isGroup: conversation.isGroup || conversation.memberCount > 2,
+        myUserId: currentUserId,
     });
 
     return (

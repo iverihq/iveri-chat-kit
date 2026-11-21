@@ -210,7 +210,11 @@ export function ChatThreadScreen({
             const message = row.item.type === 'message' ? row.item.message : null;
 
             const notice =
-                message === null ? '' : systemNoticeText(message.systemKey ?? '', message.systemVariables, translate);
+                message === null
+                    ? ''
+                    : systemNoticeText(message.systemKey ?? '', message.systemVariables, translate, {
+                          myUserId: currentUserId,
+                      });
 
             // One element with a role and the sentence as its name, so a screen reader reaches a notice the way
             // it reaches a message; inside an inverted list on the web the bare text was missing from the tree.

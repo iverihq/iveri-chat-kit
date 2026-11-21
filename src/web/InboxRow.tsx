@@ -33,7 +33,7 @@ export function InboxRow({
     onGone,
 }: Readonly<InboxRowProps>): React.JSX.Element {
     const t = useChatText();
-    const { translate, locale, timeZone } = useChatContext();
+    const { translate, locale, timeZone, currentUserId } = useChatContext();
     const heading = conversationHeading(conversation, translate);
     const isUnread = conversation.unreadCount > 0;
     const muted = isMuted(conversation.mutedUntil, now);
@@ -41,6 +41,7 @@ export function InboxRow({
     const excerpt = lastMessageExcerpt(conversation.lastMessage, translate, {
         // A sender's name only helps where more than two people talk: in a ride's chat it is the title already.
         isGroup: conversation.isGroup || conversation.memberCount > 2,
+        myUserId: currentUserId,
     });
     const time =
         conversation.lastMessage === null

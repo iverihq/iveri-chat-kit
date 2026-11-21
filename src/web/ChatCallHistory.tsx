@@ -6,6 +6,7 @@ import { useChatCallController, useChatContext, useChatText, useNow } from '../p
 import { useCallHistory } from '../query/index.js';
 import {
     CALL_HISTORY_KEYS,
+    callHistoryDuration,
     callHistoryOutcome,
     describeError,
     formatDayLabel,
@@ -39,7 +40,8 @@ function CallRow({
     const isMissed = outcome === 'missed';
     const when = `${formatDayLabel(entry.createdAt, translate, { locale, timeZone, now })} · ${formatMessageTime(entry.createdAt, { locale, timeZone })}`;
     const line = t(CALL_HISTORY_KEYS[outcome], { kind: entry.kind });
-    const duration = entry.durationSeconds === null ? null : formatDuration(entry.durationSeconds * 1000);
+    const seconds = callHistoryDuration(entry);
+    const duration = seconds === null ? null : formatDuration(seconds * 1000);
     const arrow = entry.direction === ChatCallDirection.OUTGOING ? '↗' : '↙';
 
     return (

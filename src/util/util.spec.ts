@@ -203,6 +203,48 @@ describe('excerpts and notices', () => {
         );
     });
 
+    it('words a call notice from my side: my own unanswered call is not a call I missed', () => {
+        const en = createChatTranslator({ locale: 'en' });
+        const ru = createChatTranslator({ locale: 'ru' });
+        const missed = { kind: 'video', caller: 'Nino Beridze', callerId: NINO };
+
+        expect(systemNoticeText('chat.system.call-missed', missed, en, { myUserId: NINO })).toBe(
+            'Video call, not answered',
+        );
+        expect(systemNoticeText('chat.system.call-missed', missed, ru, { myUserId: NINO })).toBe(
+            'Видеозвонок без ответа',
+        );
+        expect(
+            systemNoticeText('chat.system.call-declined', { ...missed, kind: 'voice' }, en, { myUserId: NINO }),
+        ).toBe('Voice call, not answered');
+        expect(systemNoticeText('chat.system.call-missed', missed, en, { myUserId: ME })).toBe(
+            'Missed video call from Nino Beridze',
+        );
+        // A notice from before the caller was named reads as it always did.
+        expect(
+            systemNoticeText('chat.system.call-missed', { kind: 'video', caller: 'Nino Beridze' }, en, {
+                myUserId: NINO,
+            }),
+        ).toBe('Missed video call from Nino Beridze');
+        expect(
+            lastMessageExcerpt(
+                {
+                    seq: 4,
+                    systemKey: 'chat.system.call-missed',
+                    systemVariables: missed,
+                    senderName: null,
+                    isDeleted: false,
+                    sentAt: NOW.toISOString(),
+                    kind: ChatMessageKind.SYSTEM,
+                    excerpt: null,
+                    isOwn: false,
+                },
+                ru,
+                { isGroup: false, myUserId: NINO },
+            ),
+        ).toBe('Видеозвонок без ответа');
+    });
+
     it('leaves a date that is not a calendar date as the product wrote it', () => {
         const t = createChatTranslator({ locale: 'en' });
 
