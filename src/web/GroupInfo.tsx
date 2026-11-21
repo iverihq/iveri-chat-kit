@@ -1,5 +1,6 @@
 import type { UUID } from '@iveri/contracts';
 import {
+    CHAT_GROUP_DESCRIPTION_MAX_LENGTH,
     CHAT_GROUP_TITLE_MAX_LENGTH,
     ChatConversationKind,
     ChatParticipantRole,
@@ -30,7 +31,7 @@ import { ConfirmDialog } from './ConfirmDialog.js';
 import { BlockIcon, CloseIcon, CopyIcon, EditIcon, FlagIcon, LeaveIcon, LinkIcon, PersonAddIcon } from './icons.js';
 import { PersonPicker } from './PersonPicker.js';
 import { ReportDialog } from './ReportDialog.js';
-import { cn, DANGER_BUTTON, ICON_BUTTON, PRIMARY_BUTTON, QUIET_BUTTON, TEXT_INPUT } from './style.js';
+import { cn, DANGER_BUTTON, FOCUS_RING, ICON_BUTTON, PRIMARY_BUTTON, QUIET_BUTTON, TEXT_INPUT } from './style.js';
 
 export interface GroupInfoProps {
     conversationId: UUID;
@@ -87,6 +88,7 @@ export function GroupInfo({
     const resetInvite = useResetGroupInvite();
     const [dialog, setDialog] = useState<Dialog | null>(null);
     const [renaming, setRenaming] = useState<string | null>(null);
+    const [describing, setDescribing] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
     const [problem, setProblem] = useState<string | null>(null);
 
@@ -252,6 +254,98 @@ export function GroupInfo({
                         </p>
                     )}
                 </div>
+
+                {isGroup && (data.description !== null || manages) && (
+                    <section className="flex flex-col gap-2">
+                        <h3 className="text-label font-semibold text-chat-ink">{t('chat.group.description')}</h3>
+                        {describing === null ? (
+                            <div className="flex items-start gap-2">
+                                <p
+                                    className={cn(
+                                        'min-w-0 flex-1 whitespace-pre-wrap break-words text-small',
+                                        data.description === null ? 'text-chat-faint' : 'text-chat-ink-soft',
+                                    )}
+                                >
+                                    {data.description ?? t('chat.group.description-empty')}
+                                </p>
+                                {manages && (
+                                    <button
+                                        type="button"
+                                        aria-label={t('chat.group.description-edit')}
+                                        onClick={() => {
+                                            setDescribing(data.description ?? '');
+                                        }}
+                                        className={cn(ICON_BUTTON, 'h-8 w-8')}
+                                    >
+                                        <EditIcon className="h-4 w-4" />
+                                    </button>
+                                )}
+                            </div>
+                        ) : (
+                            <form
+                                className="flex flex-col gap-2"
+                                onSubmit={(event) => {
+                                    event.preventDefault();
+                                    attempt(
+                                        updateGroup
+                                            .mutateAsync({ conversationId, description: describing.trim() })
+                                            .then(() => setDescribing(null)),
+                                    );
+                                }}
+                            >
+                                <textarea
+                                    aria-label={t('chat.group.description')}
+                                    value={describing}
+                                    rows={3}
+                                    maxLength={CHAT_GROUP_DESCRIPTION_MAX_LENGTH}
+                                    autoFocus
+                                    onChange={(event) => {
+                                        setDescribing(event.target.value);
+                                    }}
+                                    className={cn(TEXT_INPUT, 'resize-y')}
+                                />
+                                <div className="flex justify-end gap-2">
+                                    <button
+                                        type="button"
+                                        className={QUIET_BUTTON}
+                                        onClick={() => {
+                                            setDescribing(null);
+                                        }}
+                                    >
+                                        {t('chat.common.cancel')}
+                                    </button>
+                                    <button type="submit" className={PRIMARY_BUTTON}>
+                                        {t('chat.common.save')}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+                    </section>
+                )}
+
+                {isGroup && manages && (
+                    <label className="flex cursor-pointer items-start gap-3 rounded-chat-card border border-chat-line bg-chat-canvas p-3">
+                        <input
+                            type="checkbox"
+                            checked={data.onlyAdminsCanSend}
+                            onChange={(event) => {
+                                attempt(
+                                    updateGroup.mutateAsync({
+                                        conversationId,
+                                        onlyAdminsCanSend: event.target.checked,
+                                    }),
+                                );
+                            }}
+                            className={cn('mt-0.5 h-4.5 w-4.5 accent-chat-accent', FOCUS_RING)}
+                        />
+                        <span className="flex flex-col gap-0.5">
+                            <span className="text-label font-semibold text-chat-ink">
+                                {t('chat.group.admins-only')}
+                            </span>
+                            <span className="text-caption text-chat-muted">{t('chat.group.admins-only-hint')}</span>
+                        </span>
+                    </label>
+                )}
 
                 {isDirect && isNetwork && other !== null && (
                     <div className="flex flex-col gap-2">

@@ -9,7 +9,7 @@ import { myReaction, type ChatMessagePermissions } from '../util/index.js';
 
 import { ChatMenu, type ChatMenuItem } from './ChatMenu.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
-import { CopyIcon, EditIcon, FlagIcon, ReactIcon, ReplyIcon, TrashIcon } from './icons.js';
+import { CopyIcon, EditIcon, FlagIcon, PinIcon, ReactIcon, ReplyIcon, TrashIcon } from './icons.js';
 import { fitPopover, type PopoverFit } from './popover-fit.js';
 import { cn, FOCUS_RING, ICON_BUTTON } from './style.js';
 
@@ -21,6 +21,8 @@ export interface MessageActionsProps {
     onEdit: () => void;
     onDelete: (scope: ChatDeleteScope) => Promise<void>;
     onReport: () => void;
+    /** Pins the message, or unpins it when it is pinned. Drawn only where `permissions.canPin`. */
+    onPin?: (pinned: boolean) => void;
     /** Opened from outside: a right click or a long press on the bubble. */
     isMenuOpen?: boolean;
     onMenuOpenChange?: (isOpen: boolean) => void;
@@ -40,6 +42,7 @@ export function MessageActions({
     onEdit,
     onDelete,
     onReport,
+    onPin,
     isMenuOpen,
     onMenuOpenChange,
     className,
@@ -132,6 +135,18 @@ export function MessageActions({
             : []),
         ...(permissions.canEdit
             ? [{ key: 'edit', label: t('chat.action.edit'), icon: <EditIcon />, onSelect: onEdit }]
+            : []),
+        ...(permissions.canPin && onPin !== undefined
+            ? [
+                  {
+                      key: 'pin',
+                      label: t(message.pinnedAt === null ? 'chat.action.pin-message' : 'chat.action.unpin-message'),
+                      icon: <PinIcon />,
+                      onSelect: (): void => {
+                          onPin(message.pinnedAt === null);
+                      },
+                  },
+              ]
             : []),
         ...(permissions.canReport
             ? [{ key: 'report', label: t('chat.action.report'), icon: <FlagIcon />, onSelect: onReport }]

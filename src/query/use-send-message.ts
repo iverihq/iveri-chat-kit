@@ -1,11 +1,11 @@
 import type { Maybe, Nullable, UUID } from '@iveri/contracts';
-import type { ChatAttachment, ChatMessage, ChatReplyPreview } from '@iveri/contracts/chat';
+import type { ChatAttachment, ChatMention, ChatMessage, ChatReplyPreview } from '@iveri/contracts/chat';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 
 import { ChatApiError, createClientMessageId } from '../client/index.js';
 import { useChatContext } from '../provider/index.js';
-import { upsertMessage, type ChatPendingMessage } from '../util/index.js';
+import { mentionsInText, upsertMessage, type ChatPendingMessage } from '../util/index.js';
 
 import { updateWindow } from './cache.js';
 import { chatQueryKeys, NO_ID } from './query-keys.js';
@@ -15,6 +15,8 @@ export interface SendChatMessageInput {
     replyTo?: Nullable<ChatReplyPreview>;
     /** Already uploaded: a message names attachments, it never carries the bytes. */
     attachments?: ChatAttachment[];
+    /** The people the text names with `@`; only those whose `@Name` is still in the text are sent. */
+    mentions?: ChatMention[];
 }
 
 export interface ChatSendActions {
@@ -48,6 +50,7 @@ export function useSendMessage(conversationId: Maybe<UUID>): ChatSendActions {
                     body: entry.body,
                     replyToMessageId: entry.replyTo?.id ?? null,
                     attachmentIds: entry.attachments.map((attachment) => attachment.id),
+                    mentionUserIds: entry.mentions.map((mention) => mention.userId),
                 });
                 updateWindow(queryClient, entry.conversationId, (window) => upsertMessage(window, message));
                 pending.remove(entry.conversationId, entry.clientMessageId);
@@ -78,6 +81,7 @@ export function useSendMessage(conversationId: Maybe<UUID>): ChatSendActions {
                 body: body.length > 0 ? body : null,
                 replyTo: input.replyTo ?? null,
                 attachments,
+                mentions: body.length === 0 ? [] : mentionsInText(body, input.mentions ?? []),
                 status: 'sending',
                 error: null,
                 createdAt: new Date().toISOString(),

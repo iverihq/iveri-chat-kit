@@ -6,6 +6,8 @@ import type {
     ChatAttachment,
     ChatBlock,
     ChatCall,
+    ChatCallHistoryPage,
+    ChatCallHistoryQuery,
     ChatCallJoin,
     ChatContact,
     ChatConversation,
@@ -177,6 +179,9 @@ export interface ChatClient {
     deleteMessage(messageId: UUID, scope: ChatDeleteScope): Promise<void>;
     react(messageId: UUID, body: ReactToChatMessageRequest): Promise<ChatMessage>;
     unreact(messageId: UUID): Promise<ChatMessage>;
+    /** Pins a message at the top of its conversation: a group's owners and admins, anybody who may send elsewhere. */
+    pinMessage(messageId: UUID): Promise<ChatMessage>;
+    unpinMessage(messageId: UUID): Promise<ChatMessage>;
     searchMessages(query: string, options?: ChatRequestOptions): Promise<ChatMessageSearchHit[]>;
 
     uploadAttachment(
@@ -193,6 +198,8 @@ export interface ChatClient {
     getCurrentCall(conversationId: UUID, options?: ChatRequestOptions): Promise<ChatCurrentCall>;
     /** The calls ringing for me now, which is what is polled while the socket is down. */
     listIncomingCalls(options?: ChatRequestOptions): Promise<ChatCall[]>;
+    /** My calls in every conversation, newest first. */
+    listCallHistory(query: ChatCallHistoryQuery, options?: ChatRequestOptions): Promise<ChatCallHistoryPage>;
     /** Answers a ringing call with what connects to it. */
     acceptCall(callId: UUID): Promise<ChatCallJoin>;
     /** A fresh token for a call I am in: the caller connecting, or anybody reconnecting. */

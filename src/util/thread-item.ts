@@ -1,5 +1,5 @@
 import type { IsoDateTime, Nullable, UUID } from '@iveri/contracts';
-import type { ChatAttachment, ChatMessage, ChatReplyPreview } from '@iveri/contracts/chat';
+import type { ChatAttachment, ChatMention, ChatMessage, ChatReplyPreview } from '@iveri/contracts/chat';
 
 import type { ChatApiError } from '../client/index.js';
 
@@ -19,6 +19,8 @@ export interface ChatPendingMessage {
     body: Nullable<string>;
     replyTo: Nullable<ChatReplyPreview>;
     attachments: ChatAttachment[];
+    /** Who it names with `@`, drawn as mentions while it is on its way. */
+    mentions: ChatMention[];
     status: ChatPendingStatus;
     error: Nullable<ChatApiError>;
     createdAt: IsoDateTime;

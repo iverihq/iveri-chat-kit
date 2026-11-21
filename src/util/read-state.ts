@@ -14,7 +14,13 @@ export type ChatReadState =
     | { state: 'failed' }
     | { state: 'sent' }
     | { state: 'read' }
-    | { state: 'read-by'; count: number };
+    | {
+          state: 'read-by';
+          count: number;
+          /** Who has read it, and who has not yet, by the names the conversation shows. */
+          readers: string[];
+          waiting: string[];
+      };
 
 type ReadContext = Pick<ChatConversation, 'kind' | 'participants'>;
 
@@ -42,12 +48,31 @@ export function readStateOf(item: ChatThreadItem, conversation: ReadContext): Ch
     if (!message.isOwn || message.systemKey !== null) return null;
 
     const others = otherReaders(conversation);
-    const readers = others.filter(
-        (participant) => participant.lastReadSeq !== null && participant.lastReadSeq >= message.seq,
-    ).length;
+    const { read, notYet } = readersOf(message.seq, conversation);
     const isOneToOne = conversation.kind === ChatConversationKind.DIRECT || others.length === 1;
 
-    if (isOneToOne) return readers > 0 ? { state: 'read' } : { state: 'sent' };
+    if (isOneToOne) return read.length > 0 ? { state: 'read' } : { state: 'sent' };
 
-    return readers > 0 ? { state: 'read-by', count: readers } : { state: 'sent' };
+    return read.length > 0
+        ? {
+              state: 'read-by',
+              count: read.length,
+              readers: read.map((participant) => participant.displayName),
+              waiting: notYet.map((participant) => participant.displayName),
+          }
+        : { state: 'sent' };
+}
+
+/**
+ * Who has read one of my messages in a group, and who has not yet, by name in the conversation's order. Somebody whose
+ * read position is hidden counts as not yet, for the reason `readStateOf` gives.
+ */
+export function readersOf(
+    seq: number,
+    conversation: ReadContext,
+): { read: ChatParticipant[]; notYet: ChatParticipant[] } {
+    const others = otherReaders(conversation);
+    const read = others.filter((participant) => participant.lastReadSeq !== null && participant.lastReadSeq >= seq);
+
+    return { read, notYet: others.filter((participant) => !read.includes(participant)) };
 }

@@ -1,7 +1,9 @@
+import { useState } from 'react';
+
 import { useChatText } from '../provider/index.js';
 import type { ChatReadState } from '../util/index.js';
 
-import { cn } from './style.js';
+import { cn, FOCUS_RING } from './style.js';
 
 /**
  * How far one of my messages has got, as a small circle that fills as it travels: dashed while sending,
@@ -9,6 +11,65 @@ import { cn } from './style.js';
  * The words are always there too, for a screen reader and as a tooltip, because a shape is not a label.
  */
 export function ReadMark({ state }: Readonly<{ state: ChatReadState }>): React.JSX.Element {
+    const mark = <Mark state={state} />;
+
+    return state.state === 'read-by' ? <ReadersButton state={state}>{mark}</ReadersButton> : mark;
+}
+
+/**
+ * In a group, the mark opens who has read the message and who has not yet, by name. A count alone answers "how
+ * many", and the question in a group is nearly always "who".
+ */
+function ReadersButton({
+    state,
+    children,
+}: Readonly<{ state: Extract<ChatReadState, { state: 'read-by' }>; children: React.ReactNode }>): React.JSX.Element {
+    const t = useChatText();
+    const [isOpen, setIsOpen] = useState(false);
+
+    return (
+        <span className="relative inline-flex">
+            <button
+                type="button"
+                aria-expanded={isOpen}
+                aria-label={t('chat.message.read-by-show')}
+                onClick={() => {
+                    setIsOpen((open) => !open);
+                }}
+                onBlur={() => {
+                    setIsOpen(false);
+                }}
+                onKeyDown={(event) => {
+                    if (event.key === 'Escape') setIsOpen(false);
+                }}
+                className={cn('rounded-sm', FOCUS_RING)}
+            >
+                {children}
+            </button>
+            {isOpen && (
+                <span
+                    role="status"
+                    className="absolute end-0 bottom-full z-20 mb-1 flex w-56 flex-col gap-1.5 rounded-chat-panel border border-chat-line bg-chat-surface p-3 text-start shadow-md"
+                >
+                    <span className="text-caption font-semibold text-chat-ink">
+                        {t('chat.message.read-by-heading')}
+                    </span>
+                    <span className="text-small break-words text-chat-ink-soft">{state.readers.join(', ')}</span>
+                    {state.waiting.length > 0 && (
+                        <>
+                            <span className="text-caption font-semibold text-chat-muted">
+                                {t('chat.message.not-read-heading')}
+                            </span>
+                            <span className="text-small break-words text-chat-muted">{state.waiting.join(', ')}</span>
+                        </>
+                    )}
+                </span>
+            )}
+        </span>
+    );
+}
+
+function Mark({ state }: Readonly<{ state: ChatReadState }>): React.JSX.Element {
     const t = useChatText();
     const label =
         state.state === 'sending'

@@ -36,6 +36,7 @@ export interface MessageListProps {
     onReply: (message: ChatMessage) => void;
     onEdit: (message: ChatMessage) => void;
     onReport: (message: ChatMessage) => void;
+    onPin?: (messageId: UUID, pinned: boolean) => void;
     onReact: (messageId: UUID, emoji: Nullable<string>) => void;
     onDelete: (messageId: UUID, scope: ChatDeleteScope) => Promise<void>;
     onJumpTo: (seq: number) => void;
@@ -70,6 +71,7 @@ export function MessageList({
     onReply,
     onEdit,
     onReport,
+    onPin,
     onReact,
     onDelete,
     onJumpTo,
@@ -207,6 +209,7 @@ export function MessageList({
                             onReply={onReply}
                             onEdit={onEdit}
                             onReport={onReport}
+                            onPin={onPin}
                             onReact={onReact}
                             onDelete={onDelete}
                             onJumpTo={onJumpTo}

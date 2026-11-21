@@ -35,4 +35,5 @@ export const chatQueryKeys = {
     call: (callId: UUID) => [ROOT, 'call', callId] as const,
     currentCall: (conversationId: UUID) => [ROOT, 'call', 'current', conversationId] as const,
     incomingCalls: () => [ROOT, 'call', 'incoming'] as const,
+    callHistory: (missedOnly: boolean) => [ROOT, 'call', 'history', missedOnly] as const,
 };

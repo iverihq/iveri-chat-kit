@@ -5,7 +5,7 @@ import {
     CHAT_MESSAGE_MAX_LENGTH,
     ChatAttachmentKind,
 } from '@iveri/contracts/chat';
-import type { ChatConversation, ChatMessage } from '@iveri/contracts/chat';
+import type { ChatConversation, ChatMention, ChatMessage, ChatParticipant } from '@iveri/contracts/chat';
 import type { ClipboardEvent, DragEvent, KeyboardEvent } from 'react';
 import { useEffect, useId, useRef, useState } from 'react';
 
@@ -26,8 +26,13 @@ import {
     encodeWaveformField,
     formatByteSize,
     formatDuration,
+    insertMention,
+    mentionCandidates,
+    mentionQueryAt,
+    mentionsInText,
     replyExcerpt,
     toReplyPreview,
+    type ChatMentionQuery,
 } from '../util/index.js';
 
 import { ChatMenu } from './ChatMenu.js';
@@ -43,6 +48,7 @@ import {
     SendIcon,
     TrashIcon,
 } from './icons.js';
+import { MentionPicker } from './MentionPicker.js';
 import { cn, FOCUS_RING, ICON_BUTTON, PRIMARY_BUTTON } from './style.js';
 import { useVoiceRecorder } from './use-voice-recorder.js';
 
@@ -95,6 +101,10 @@ export function ChatComposer({
     const settings = useConversationSettings(conversation.id);
 
     const [text, setText] = useState('');
+    // The people picked with `@` so far; only those whose name is still in the text go with the message.
+    const [picked, setPicked] = useState<ChatMention[]>([]);
+    const [mentionQuery, setMentionQuery] = useState<Nullable<ChatMentionQuery>>(null);
+    const [mentionIndex, setMentionIndex] = useState(0);
     const [notice, setNotice] = useState<Nullable<string>>(null);
     const [isSendingVoice, setIsSendingVoice] = useState(false);
     const [seenModeKey, setSeenModeKey] = useState(modeKeyOf(mode));
@@ -103,14 +113,24 @@ export function ChatComposer({
     const fileInput = useRef<HTMLInputElement>(null);
     const previews = useRef(new Set<string>());
     const hintId = useId();
+    const pickerId = useId();
+    const candidates: ChatParticipant[] =
+        mentionQuery === null || !conversation.isGroup
+            ? []
+            : mentionCandidates(conversation.participants, mentionQuery.query);
 
     // Entering edit mode loads the message's text; leaving it clears what was being edited. Adjusted during
     // render, React's own pattern for state that follows a prop, rather than in an effect a frame later.
     const modeKey = modeKeyOf(mode);
     if (seenModeKey !== modeKey) {
         setSeenModeKey(modeKey);
-        if (mode?.type === 'edit') setText(mode.message.body ?? '');
-        else if (seenModeKey.startsWith('edit:')) setText('');
+        if (mode?.type === 'edit') {
+            setText(mode.message.body ?? '');
+            setPicked(mode.message.mentions);
+        } else if (seenModeKey.startsWith('edit:')) {
+            setText('');
+            setPicked([]);
+        }
     }
 
     useEffect(() => {
@@ -233,8 +253,13 @@ export function ChatComposer({
 
         if (mode?.type === 'edit') {
             try {
-                await edit.mutateAsync({ messageId: mode.message.id, body: trimmed });
+                await edit.mutateAsync({
+                    messageId: mode.message.id,
+                    body: trimmed,
+                    mentions: mentionsInText(trimmed, picked),
+                });
                 setText('');
+                setPicked([]);
                 onModeChange(null);
             } catch (error: unknown) {
                 setNotice(describeError(error, translate));
@@ -247,11 +272,14 @@ export function ChatComposer({
         const replyTo = mode?.type === 'reply' ? toReplyPreview(mode.message) : null;
         // Cleared before the answer: the message is already on screen as "sending", and a failure keeps it
         // there with its retry, so the composer is free for the next one.
+        const mentions = picked;
         setText('');
+        setPicked([]);
+        setMentionQuery(null);
         typing.stop();
         drafts.clear();
         onModeChange(null);
-        await sender.send({ body: trimmed, attachments, replyTo });
+        await sender.send({ body: trimmed, attachments, replyTo, mentions });
     };
 
     const sendVoice = async (): Promise<void> => {
@@ -278,7 +306,42 @@ export function ChatComposer({
         }
     };
 
+    const pickMention = (person: ChatParticipant): void => {
+        const node = field.current;
+        if (mentionQuery === null || node === null) return;
+        const mention: ChatMention = { userId: person.userId, displayName: person.displayName };
+        const next = insertMention(text, mentionQuery, node.selectionStart, mention);
+        setText(next.text);
+        setPicked((current) => [...current.filter((entry) => entry.userId !== person.userId), mention]);
+        setMentionQuery(null);
+        requestAnimationFrame(() => {
+            node.focus();
+            node.setSelectionRange(next.caret, next.caret);
+        });
+    };
+
     const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
+        if (candidates.length > 0) {
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                event.preventDefault();
+                const step = event.key === 'ArrowDown' ? 1 : -1;
+                setMentionIndex((index) => (index + step + candidates.length) % candidates.length);
+
+                return;
+            }
+            if ((event.key === 'Enter' || event.key === 'Tab') && !event.nativeEvent.isComposing) {
+                event.preventDefault();
+                pickMention(candidates[Math.min(mentionIndex, candidates.length - 1)]);
+
+                return;
+            }
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                setMentionQuery(null);
+
+                return;
+            }
+        }
         if (event.key === 'Escape' && mode !== null) {
             event.preventDefault();
             onModeChange(null);
@@ -354,6 +417,14 @@ export function ChatComposer({
             }}
             onDrop={onDrop}
         >
+            {candidates.length > 0 && (
+                <MentionPicker
+                    id={pickerId}
+                    people={candidates}
+                    activeIndex={Math.min(mentionIndex, candidates.length - 1)}
+                    onPick={pickMention}
+                />
+            )}
             {mode !== null && (
                 <div className="mb-2 flex items-center gap-3 rounded-chat-control border-s-[3px] border-chat-accent bg-chat-accent-soft px-3 py-2">
                     <span className="text-chat-accent">{mode.type === 'reply' ? <ReplyIcon /> : <EditIcon />}</span>
@@ -494,8 +565,22 @@ export function ChatComposer({
                         aria-label={t('chat.composer.label')}
                         aria-describedby={hintId}
                         placeholder={t('chat.composer.placeholder')}
+                        role={candidates.length > 0 ? 'combobox' : undefined}
+                        aria-expanded={candidates.length > 0 ? true : undefined}
+                        aria-controls={candidates.length > 0 ? pickerId : undefined}
+                        aria-activedescendant={
+                            candidates.length > 0
+                                ? `${pickerId}-${candidates[Math.min(mentionIndex, candidates.length - 1)].userId}`
+                                : undefined
+                        }
                         onChange={(event) => {
                             setText(event.target.value);
+                            setMentionQuery(
+                                conversation.isGroup
+                                    ? mentionQueryAt(event.target.value, event.target.selectionStart)
+                                    : null,
+                            );
+                            setMentionIndex(0);
                             if (isEditing) return;
                             if (event.target.value.trim().length > 0) typing.start();
                             else typing.stop();

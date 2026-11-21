@@ -1,4 +1,6 @@
+export * from './ChatCallHistoryScreen.js';
 export * from './ChatComposer.js';
+export * from './ChatConversationDetailsScreen.js';
 export * from './ChatInboxScreen.js';
 export * from './ChatNativeProvider.js';
 export * from './ChatText.js';

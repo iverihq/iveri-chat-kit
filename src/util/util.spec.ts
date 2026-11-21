@@ -262,6 +262,7 @@ describe('read state', () => {
         body: 'x',
         replyTo: null,
         attachments: [],
+        mentions: [],
         status: 'failed',
         error: null,
         createdAt: NOW.toISOString(),
@@ -290,11 +291,16 @@ describe('read state', () => {
             isGroup: true,
             participants: [
                 participant({ userId: ME, isMe: true }),
-                participant({ userId: NINO, lastReadSeq: 9 }),
-                participant({ userId: GIORGI, lastReadSeq: null }),
+                participant({ userId: NINO, displayName: 'Nino', lastReadSeq: 9 }),
+                participant({ userId: GIORGI, displayName: 'Giorgi', lastReadSeq: null }),
             ],
         });
-        expect(readStateOf(messageItem(ownMessage({ seq: 9 })), group)).toEqual({ state: 'read-by', count: 1 });
+        expect(readStateOf(messageItem(ownMessage({ seq: 9 })), group)).toEqual({
+            state: 'read-by',
+            count: 1,
+            readers: ['Nino'],
+            waiting: ['Giorgi'],
+        });
     });
 });
 

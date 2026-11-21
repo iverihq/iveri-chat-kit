@@ -1,5 +1,5 @@
 import type { Maybe, Nullable, UUID } from '@iveri/contracts';
-import type { ChatMessage } from '@iveri/contracts/chat';
+import type { ChatMention, ChatMessage } from '@iveri/contracts/chat';
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query';
 
 import type { ChatApiError, ChatDeleteScope } from '../client/index.js';
@@ -19,6 +19,8 @@ import { chatQueryKeys, NO_ID } from './query-keys.js';
 export interface EditChatMessageInput {
     messageId: UUID;
     body: string;
+    /** The people the new text names. Omitted keeps the message's mentions. */
+    mentions?: ChatMention[];
 }
 
 /** Changes a message's text. Author only, text only, within the edit window; `EDIT_WINDOW_PASSED` otherwise. */
@@ -29,7 +31,11 @@ export function useEditMessage(
     const queryClient = useQueryClient();
 
     return useMutation<ChatMessage, ChatApiError, EditChatMessageInput>({
-        mutationFn: ({ messageId, body }) => client.editMessage(messageId, { body: body.trim() }),
+        mutationFn: ({ messageId, body, mentions }) =>
+            client.editMessage(messageId, {
+                body: body.trim(),
+                ...(mentions === undefined ? {} : { mentionUserIds: mentions.map((mention) => mention.userId) }),
+            }),
         onSuccess: (message) => {
             updateWindow(queryClient, conversationId ?? message.conversationId, (window) =>
                 upsertMessage(window, message),
@@ -109,6 +115,34 @@ export function useReaction(
         },
         onSuccess: (message) => {
             updateWindow(queryClient, message.conversationId, (window) => upsertMessage(window, message));
+        },
+    });
+}
+
+export interface PinChatMessageInput {
+    messageId: UUID;
+    /** False unpins. */
+    pinned: boolean;
+}
+
+/**
+ * Pins or unpins a message: a group's owners and admins (`canPinMessages` says who), anybody who may send elsewhere.
+ * The conversation is fetched again, since its pinned bar is the conversation's.
+ */
+export function usePinMessage(
+    conversationId: Maybe<UUID>,
+): UseMutationResult<ChatMessage, ChatApiError, PinChatMessageInput> {
+    const { client } = useChatContext();
+    const queryClient = useQueryClient();
+
+    return useMutation<ChatMessage, ChatApiError, PinChatMessageInput>({
+        mutationFn: ({ messageId, pinned }) => (pinned ? client.pinMessage(messageId) : client.unpinMessage(messageId)),
+        onSuccess: (message) => {
+            updateWindow(queryClient, conversationId ?? message.conversationId, (window) =>
+                upsertMessage(window, message),
+            );
+            void queryClient.invalidateQueries({ queryKey: chatQueryKeys.conversation(message.conversationId) });
+            void queryClient.invalidateQueries({ queryKey: chatQueryKeys.messages(message.conversationId) });
         },
     });
 }

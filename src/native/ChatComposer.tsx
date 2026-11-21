@@ -5,7 +5,7 @@ import {
     CHAT_MESSAGE_MAX_LENGTH,
     ChatAttachmentKind,
 } from '@iveri/contracts/chat';
-import type { ChatConversation, ChatMessage } from '@iveri/contracts/chat';
+import type { ChatConversation, ChatMention, ChatMessage } from '@iveri/contracts/chat';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Image, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
@@ -25,6 +25,10 @@ import {
     encodeWaveformField,
     formatByteSize,
     formatDuration,
+    insertMention,
+    mentionCandidates,
+    mentionQueryAt,
+    mentionsInText,
     replyExcerpt,
     toReplyPreview,
 } from '../util/index.js';
@@ -55,6 +59,9 @@ export function ChatComposer({ conversation, mode, onModeChange }: Readonly<Chat
     const drafts = useComposerAttachments();
     const settings = useConversationSettings(conversation.id);
     const [text, setText] = useState('');
+    const [caret, setCaret] = useState(0);
+    // The people picked with `@` so far; only those whose name is still in the text go with the message.
+    const [picked, setPicked] = useState<ChatMention[]>([]);
     const [notice, setNotice] = useState<Nullable<string>>(null);
     const [recording, setRecording] = useState<Nullable<{ handle: ChatVoiceRecording; startedAt: number }>>(null);
     const [elapsed, setElapsed] = useState(0);
@@ -63,9 +70,17 @@ export function ChatComposer({ conversation, mode, onModeChange }: Readonly<Chat
 
     if (seenMode !== mode) {
         setSeenMode(mode);
-        if (mode?.type === 'edit') setText(mode.message.body ?? '');
-        else if (seenMode?.type === 'edit') setText('');
+        if (mode?.type === 'edit') {
+            setText(mode.message.body ?? '');
+            setPicked(mode.message.mentions);
+        } else if (seenMode?.type === 'edit') {
+            setText('');
+            setPicked([]);
+        }
     }
+
+    const mentionQuery = conversation.isGroup ? mentionQueryAt(text, Math.min(caret, text.length)) : null;
+    const candidates = mentionQuery === null ? [] : mentionCandidates(conversation.participants, mentionQuery.query);
 
     useEffect(() => {
         if (mode !== null) field.current?.focus();
@@ -166,8 +181,13 @@ export function ChatComposer({ conversation, mode, onModeChange }: Readonly<Chat
         setNotice(null);
         if (mode?.type === 'edit') {
             try {
-                await edit.mutateAsync({ messageId: mode.message.id, body: trimmed });
+                await edit.mutateAsync({
+                    messageId: mode.message.id,
+                    body: trimmed,
+                    mentions: mentionsInText(trimmed, picked),
+                });
                 setText('');
+                setPicked([]);
                 onModeChange(null);
             } catch (error: unknown) {
                 setNotice(describeError(error, translate));
@@ -177,11 +197,13 @@ export function ChatComposer({ conversation, mode, onModeChange }: Readonly<Chat
         }
         const attachments = drafts.ready;
         const replyTo = mode?.type === 'reply' ? toReplyPreview(mode.message) : null;
+        const mentions = picked;
         setText('');
+        setPicked([]);
         typing.stop();
         drafts.clear();
         onModeChange(null);
-        await sender.send({ body: trimmed, attachments, replyTo });
+        await sender.send({ body: trimmed, attachments, replyTo, mentions });
     };
 
     const startRecording = async (): Promise<void> => {
@@ -256,6 +278,40 @@ export function ChatComposer({ conversation, mode, onModeChange }: Readonly<Chat
 
     return (
         <View style={[styles.wrapper, { backgroundColor: c.surface, borderTopColor: c.line }]}>
+            {mentionQuery !== null && candidates.length > 0 && (
+                <View
+                    accessibilityLabel={t('chat.mention.picker')}
+                    style={[styles.mentions, { borderColor: c.line, backgroundColor: c.surface }]}
+                >
+                    {candidates.map((person) => (
+                        <Pressable
+                            key={person.userId}
+                            accessibilityRole="button"
+                            onPress={() => {
+                                const mention: ChatMention = { userId: person.userId, displayName: person.displayName };
+                                const next = insertMention(text, mentionQuery, Math.min(caret, text.length), mention);
+                                setText(next.text);
+                                setCaret(next.caret);
+                                setPicked((current) => [
+                                    ...current.filter((entry) => entry.userId !== person.userId),
+                                    mention,
+                                ]);
+                                field.current?.focus();
+                            }}
+                            style={({ pressed }) => [styles.mentionRow, pressed && { backgroundColor: c.raised }]}
+                        >
+                            <ChatText style={{ color: c.ink, fontSize: 15, fontWeight: '500' }} numberOfLines={1}>
+                                {person.displayName}
+                            </ChatText>
+                            {person.handle !== null && (
+                                <ChatText style={[styles.small, { color: c.muted }]} numberOfLines={1}>
+                                    @{person.handle}
+                                </ChatText>
+                            )}
+                        </Pressable>
+                    ))}
+                </View>
+            )}
             {mode !== null && (
                 <View style={[styles.mode, { backgroundColor: c.accentSoft, borderLeftColor: c.accent }]}>
                     <View style={styles.modeText}>
@@ -355,8 +411,13 @@ export function ChatComposer({ conversation, mode, onModeChange }: Readonly<Chat
                     accessibilityLabel={t('chat.composer.label')}
                     placeholder={t('chat.composer.placeholder')}
                     placeholderTextColor={c.faint}
+                    onSelectionChange={(event) => {
+                        setCaret(event.nativeEvent.selection.end);
+                    }}
                     onChangeText={(value) => {
                         setText(value);
+                        // The caret is told after the text; until then it is where the typing happened, the end.
+                        setCaret(value.length);
                         if (isEditing) return;
                         if (value.trim().length > 0) typing.start();
                         else typing.stop();
@@ -410,6 +471,8 @@ export function ChatComposer({ conversation, mode, onModeChange }: Readonly<Chat
 }
 
 const styles = StyleSheet.create({
+    mentions: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, marginBottom: 8, paddingVertical: 4 },
+    mentionRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10 },
     wrapper: {
         borderTopWidth: StyleSheet.hairlineWidth,
         paddingHorizontal: 10,
