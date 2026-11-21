@@ -12,7 +12,7 @@ import {
     formatDuration,
     formatMessageTime,
     messageExcerpt,
-    linkify,
+    messageParts,
     readStateOf,
     replyExcerpt,
     type ChatBubblePosition,
@@ -173,7 +173,7 @@ export function MessageBubble({
     onDiscard,
 }: Readonly<MessageBubbleProps>): React.JSX.Element {
     const t = useChatText();
-    const { translate, locale, timeZone } = useChatContext();
+    const { translate, locale, timeZone, currentUserId } = useChatContext();
     const { theme, capabilities } = useChatNative();
     const message = item.type === 'message' ? item.message : null;
     const pending = item.type === 'pending' ? item.pending : null;
@@ -309,8 +309,20 @@ export function MessageBubble({
                         )}
                         {body !== null && body.length > 0 && (
                             <ChatText style={styles.body}>
-                                {linkify(body).map((part, index) =>
-                                    part.type === 'link' ? (
+                                {messageParts(body, message?.mentions ?? pending?.mentions ?? []).map((part, index) =>
+                                    part.type === 'mention' ? (
+                                        <ChatText
+                                            key={`mention-${index}`}
+                                            style={{
+                                                color: theme.color.accent,
+                                                fontWeight: '600',
+                                                backgroundColor:
+                                                    part.userId === currentUserId ? theme.color.accentSoft : undefined,
+                                            }}
+                                        >
+                                            {part.text}
+                                        </ChatText>
+                                    ) : part.type === 'link' ? (
                                         <ChatText
                                             key={`link-${index}`}
                                             accessibilityRole="link"

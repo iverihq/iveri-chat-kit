@@ -143,3 +143,23 @@ order, labelled `chat.label.guest` and `chat.label.restaurant` under `chat.title
 `chat.system.restaurant-order-*` (accepted, ready to collect, on its way, collected, delivered, cancelled), with no
 variables. Only the step the order has just reached is told, so the kit never draws "ready to collect" after
 "collected".
+
+## Mentions, pinned messages, group settings, phone details and call history (2026-11-21, 0.12.0)
+
+`@iveri/contracts` 0.108.0 (peer floor raised to it) and chat-api #20.
+
+- **A mention is `@Name` in the text plus the person in `mentions`.** The composers open a picker on an `@` at the
+  start of the text or after a space (never inside an email address), only in a conversation drawn as a group, and
+  `mentionsInText` sends only the people whose `@Name` is still in the text, so deleting the name drops the mention.
+  `messageParts` draws each listed `@Name`, longest first, before linkifying the rest; my own mention is tinted.
+- **Pinned messages are a bar over the thread**, one at a time, latest pin first; pressing it goes to the message
+  (web) and moves to the next. Pin and unpin sit in the message menu where `canPinMessages` allows.
+- **Group details**: the web panel gained the description and "only admins can send"; the phone has
+  `ChatConversationDetailsScreen` (members and roles, add people, invitation link, description, admins-only, mute, pin,
+  archive, leave, delete), opened from `ChatThreadScreen`'s `onOpenDetails`. A member of an admins-only group still
+  reacts (`messagePermissions.canReact`).
+- **"Read by" names**: the read state of my group message carries `readers` and `waiting`; the web mark opens them,
+  the phone shows them at the top of the message sheet.
+- **Call history**: `useCallHistory`, `ChatCallHistory` (web) and `ChatCallHistoryScreen` (native), with a Missed
+  folder; `callHistoryOutcome` decides the words from my side, trusting the server's `isMissed`.
+- **Not seen**: the phone screens on a phone (specs and react-native-web only).

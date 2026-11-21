@@ -1,4 +1,5 @@
 export * from './ChatAvatar.js';
+export * from './ChatCallHistory.js';
 export * from './ChatComposer.js';
 export * from './ChatDialog.js';
 export * from './ChatInbox.js';
@@ -11,6 +12,7 @@ export * from './GroupInfo.js';
 export * from './MessageActions.js';
 export * from './MessageBubble.js';
 export * from './PersonPicker.js';
+export * from './PinnedBar.js';
 export * from './ReportDialog.js';
 export * from './style.js';
 export * from './use-voice-recorder.js';

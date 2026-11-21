@@ -4,7 +4,7 @@ import { ChatRefusal, ChatReportReason } from '@iveri/contracts/chat';
  * The system notices the kit can draw. A notice is a key and variables, never free text, so every key a
  * server can send has to be here and in the namespace.
  *
- * The first fourteen are `chat-api`'s own (`SYSTEM_MESSAGE_KEYS` in its `conversation/util`), with the
+ * The first twenty are `chat-api`'s own (`SYSTEM_MESSAGE_KEYS` in its `conversation/util`), with the
  * variables it writes: `{actor}` who did it, `{name}` who it was done to, `{title}`, and `{role}` as
  * `owner`, `admin` or `member`. The rest are products' notices, posted through the embedding API. Gym's
  * carry `{date}` as a calendar date the kit writes out in the reader's words (`systemNoticeText`) and
@@ -15,6 +15,10 @@ export const CHAT_SYSTEM_MESSAGE_KEYS = [
     'chat.system.group-renamed',
     'chat.system.group-photo-changed',
     'chat.system.group-photo-removed',
+    'chat.system.group-description-changed',
+    'chat.system.group-admins-only-on',
+    'chat.system.group-admins-only-off',
+    'chat.system.message-pinned',
     'chat.system.member-added',
     'chat.system.member-joined',
     'chat.system.member-removed',
@@ -352,6 +356,36 @@ const INTERFACE_KEYS = [
     'chat.group.invite-copied',
     'chat.group.invite-reset',
     'chat.group.invite-reset-body',
+    'chat.group.invite-share',
+    'chat.group.description',
+    'chat.group.description-empty',
+    'chat.group.description-edit',
+    'chat.group.admins-only',
+    'chat.group.admins-only-hint',
+
+    'chat.mention.picker',
+    'chat.inbox.mentioned',
+    'chat.action.pin-message',
+    'chat.action.unpin-message',
+    'chat.pin.bar',
+    'chat.pin.bar-many',
+    'chat.message.read-by-show',
+    'chat.message.read-by-heading',
+    'chat.message.not-read-heading',
+
+    'chat.calls.title',
+    'chat.calls.all',
+    'chat.calls.missed',
+    'chat.calls.empty',
+    'chat.calls.empty-missed',
+    'chat.calls.error',
+    'chat.calls.open-chat',
+    'chat.calls.line.ongoing',
+    'chat.calls.line.missed',
+    'chat.calls.line.declined',
+    'chat.calls.line.incoming',
+    'chat.calls.line.outgoing',
+    'chat.calls.line.not-answered',
 
     'chat.person.block',
     'chat.person.unblock',

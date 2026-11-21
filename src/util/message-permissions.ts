@@ -3,6 +3,7 @@ import {
     CHAT_EDIT_WINDOW_HOURS,
     ChatConversationKind,
     ChatParticipantRole,
+    ChatRefusal,
 } from '@iveri/contracts/chat';
 import type { ChatConversation, ChatMessage } from '@iveri/contracts/chat';
 
@@ -28,11 +29,14 @@ export interface ChatMessagePermissions {
     canDeleteForMe: boolean;
     /** Never one's own message, never a notice. */
     canReport: boolean;
+    /** A group's owners and admins, anybody who may send elsewhere (`canPinMessages`); never a notice. */
+    canPin: boolean;
 }
 
 export function messagePermissions(
     message: ChatMessage,
-    conversation: Pick<ChatConversation, 'kind' | 'myRole' | 'canSend'>,
+    conversation: Pick<ChatConversation, 'kind' | 'myRole' | 'canSend'> &
+        Partial<Pick<ChatConversation, 'refusal' | 'canPinMessages'>>,
     now: Date,
 ): ChatMessagePermissions {
     const isSystem = message.systemKey !== null;
@@ -44,12 +48,14 @@ export function messagePermissions(
 
     return {
         canReply: isLive && conversation.canSend,
-        canReact: isLive && conversation.canSend,
+        // A group only its admins write in still takes everybody's reactions.
+        canReact: isLive && (conversation.canSend || conversation.refusal === ChatRefusal.ADMINS_ONLY),
         canCopy: isLive && hasText,
         canEdit: isLive && message.isOwn && hasText && within(message, CHAT_EDIT_WINDOW_HOURS, now),
         canDeleteForEveryone:
             isLive && ((message.isOwn && within(message, CHAT_DELETE_WINDOW_HOURS, now)) || moderatesGroup),
         canDeleteForMe: !isSystem,
         canReport: isLive && !message.isOwn,
+        canPin: isLive && conversation.canPinMessages === true,
     };
 }

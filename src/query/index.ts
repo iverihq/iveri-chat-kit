@@ -1,6 +1,7 @@
 export * from './cache.js';
 export * from './query-keys.js';
 export * from './use-attachments.js';
+export * from './use-call-history.js';
 export * from './use-call-session.js';
 export * from './use-calls.js';
 export * from './use-conversation-settings.js';

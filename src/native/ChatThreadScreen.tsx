@@ -26,6 +26,7 @@ import {
     useDeleteMessage,
     useMarkRead,
     useMessages,
+    usePinMessage,
     useReaction,
     useReport,
     useSendMessage,
@@ -41,6 +42,8 @@ import {
     messagePermissions,
     shouldPinToNewest,
     myReaction,
+    readStateOf,
+    replyExcerpt,
     systemNoticeText,
     threadRows,
     typingText,
@@ -60,6 +63,8 @@ export interface ChatThreadScreenProps {
     /** The back control's name, already translated: "Back to the ride" in an embedding. */
     backLabel?: string;
     showHeader?: boolean;
+    /** Opens the conversation's details (members, settings), drawn by the app as its own screen. */
+    onOpenDetails?: () => void;
 }
 
 type Sheet =
@@ -77,6 +82,7 @@ export function ChatThreadScreen({
     onBack,
     backLabel,
     showHeader = true,
+    onOpenDetails,
 }: Readonly<ChatThreadScreenProps>): React.JSX.Element {
     const t = useChatText();
     const { translate, locale, timeZone, currentUserId } = useChatContext();
@@ -89,6 +95,8 @@ export function ChatThreadScreen({
     const markRead = useMarkRead(conversationId);
     const reaction = useReaction(conversationId);
     const deletion = useDeleteMessage(conversationId);
+    const pin = usePinMessage(conversationId);
+    const [pinIndex, setPinIndex] = useState(0);
     const sender = useSendMessage(conversationId);
     const report = useReport();
     const typing = useTypingPeople(conversationId);
@@ -280,7 +288,13 @@ export function ChatThreadScreen({
                             <ChatText style={{ fontSize: 22, color: c.ink }}>‹</ChatText>
                         </Pressable>
                     )}
-                    <View style={styles.headerText}>
+                    <Pressable
+                        accessibilityRole={onOpenDetails === undefined ? undefined : 'button'}
+                        accessibilityLabel={onOpenDetails === undefined ? undefined : t('chat.action.details')}
+                        disabled={onOpenDetails === undefined}
+                        onPress={onOpenDetails}
+                        style={styles.headerText}
+                    >
                         <View style={styles.titleRow}>
                             <ChatText style={styles.headerTitle} numberOfLines={1}>
                                 {heading.title}
@@ -296,7 +310,7 @@ export function ChatThreadScreen({
                                 {subtitle}
                             </ChatText>
                         )}
-                    </View>
+                    </Pressable>
                     {showsCalls && (
                         <View style={styles.callButtons}>
                             {[ChatCallKind.VOICE, ChatCallKind.VIDEO].map((kind) => (
@@ -323,6 +337,47 @@ export function ChatThreadScreen({
                 </View>
             )}
             {data.isGroup && <CallBanner conversationId={data.id} />}
+            {data.pinnedMessages.length > 0 &&
+                ((): React.JSX.Element => {
+                    const shown = data.pinnedMessages[Math.min(pinIndex, data.pinnedMessages.length - 1)];
+                    const excerpt = replyExcerpt({ ...shown, isDeleted: false }, translate);
+
+                    return (
+                        <View style={[styles.pinned, { backgroundColor: c.surface, borderBottomColor: c.line }]}>
+                            <Pressable
+                                accessibilityRole="button"
+                                onPress={() => {
+                                    setPinIndex((index) => (index + 1) % data.pinnedMessages.length);
+                                }}
+                                style={styles.pinnedText}
+                            >
+                                <ChatText style={[styles.caption, { color: c.accent, fontWeight: '600' }]}>
+                                    {data.pinnedMessages.length > 1
+                                        ? t('chat.pin.bar-many', {
+                                              index: Math.min(pinIndex, data.pinnedMessages.length - 1) + 1,
+                                              count: data.pinnedMessages.length,
+                                          })
+                                        : t('chat.pin.bar')}
+                                </ChatText>
+                                <ChatText style={{ color: c.inkSoft, fontSize: 14 }} numberOfLines={1}>
+                                    {shown.senderName === null ? excerpt : `${shown.senderName}: ${excerpt}`}
+                                </ChatText>
+                            </Pressable>
+                            {data.canPinMessages && (
+                                <Pressable
+                                    accessibilityRole="button"
+                                    accessibilityLabel={t('chat.action.unpin-message')}
+                                    hitSlop={8}
+                                    onPress={() => {
+                                        pin.mutate({ messageId: shown.id, pinned: false });
+                                    }}
+                                >
+                                    <ChatText style={{ fontSize: 18, color: c.muted }}>×</ChatText>
+                                </Pressable>
+                            )}
+                        </View>
+                    );
+                })()}
             <FlatList
                 ref={list}
                 inverted
@@ -382,6 +437,36 @@ export function ChatThreadScreen({
                     >
                         {sheet?.type === 'actions' && permissions !== null && sheetMessage !== null && (
                             <>
+                                {((): React.JSX.Element | null => {
+                                    const read = readStateOf(
+                                        { type: 'message', key: sheetMessage.id, message: sheetMessage },
+                                        data,
+                                    );
+                                    if (read?.state !== 'read-by') return null;
+
+                                    return (
+                                        <View style={styles.readers}>
+                                            <ChatText style={[styles.caption, { color: c.ink, fontWeight: '600' }]}>
+                                                {t('chat.message.read-by-heading')}
+                                            </ChatText>
+                                            <ChatText style={[styles.caption, { color: c.inkSoft }]}>
+                                                {read.readers.join(', ')}
+                                            </ChatText>
+                                            {read.waiting.length > 0 && (
+                                                <>
+                                                    <ChatText
+                                                        style={[styles.caption, { color: c.muted, fontWeight: '600' }]}
+                                                    >
+                                                        {t('chat.message.not-read-heading')}
+                                                    </ChatText>
+                                                    <ChatText style={[styles.caption, { color: c.muted }]}>
+                                                        {read.waiting.join(', ')}
+                                                    </ChatText>
+                                                </>
+                                            )}
+                                        </View>
+                                    );
+                                })()}
                                 {permissions.canReact && (
                                     <View accessibilityLabel={t('chat.reaction.quick')} style={styles.quick}>
                                         {CHAT_QUICK_REACTIONS.map((emoji) => {
@@ -420,6 +505,19 @@ export function ChatThreadScreen({
                                     act(t('chat.action.copy'), () => capabilities.copyText?.(sheetMessage.body ?? ''))}
                                 {permissions.canEdit &&
                                     act(t('chat.action.edit'), () => setMode({ type: 'edit', message: sheetMessage }))}
+                                {permissions.canPin &&
+                                    act(
+                                        t(
+                                            sheetMessage.pinnedAt === null
+                                                ? 'chat.action.pin-message'
+                                                : 'chat.action.unpin-message',
+                                        ),
+                                        () =>
+                                            pin.mutate({
+                                                messageId: sheetMessage.id,
+                                                pinned: sheetMessage.pinnedAt === null,
+                                            }),
+                                    )}
                                 {permissions.canReport &&
                                     act(t('chat.action.report'), () =>
                                         setSheet({ type: 'report', message: sheetMessage }),
@@ -521,6 +619,16 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
     },
     caption: { fontSize: 12 },
+    pinned: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+    },
+    pinnedText: { flex: 1, minWidth: 0 },
+    readers: { paddingHorizontal: 20, paddingBottom: 10, gap: 2 },
     typing: { minHeight: 22, paddingHorizontal: 16, justifyContent: 'center' },
     older: { paddingVertical: 12 },
     empty: { alignItems: 'center', gap: 6, paddingVertical: 64 },

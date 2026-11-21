@@ -1,6 +1,12 @@
 import type { Nullable, UUID } from '@iveri/contracts';
 import { ChatAttachmentKind } from '@iveri/contracts/chat';
-import type { ChatAttachment, ChatConversation, ChatMessage, ChatReplyPreview } from '@iveri/contracts/chat';
+import type {
+    ChatAttachment,
+    ChatConversation,
+    ChatMention,
+    ChatMessage,
+    ChatReplyPreview,
+} from '@iveri/contracts/chat';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { useRef, useState } from 'react';
 
@@ -9,7 +15,7 @@ import { useChatContext, useChatText } from '../provider/index.js';
 import {
     describeError,
     formatMessageTime,
-    linkify,
+    messageParts,
     messagePermissions,
     replyExcerpt,
     type ChatReadState,
@@ -59,6 +65,7 @@ export interface MessageBubbleProps {
     onReply: (message: ChatMessage) => void;
     onEdit: (message: ChatMessage) => void;
     onReport: (message: ChatMessage) => void;
+    onPin?: (messageId: UUID, pinned: boolean) => void;
     onReact: (messageId: UUID, emoji: Nullable<string>) => void;
     onDelete: (messageId: UUID, scope: ChatDeleteScope) => Promise<void>;
     onJumpTo: (seq: number) => void;
@@ -68,11 +75,25 @@ export interface MessageBubbleProps {
     onMediaLoad?: () => void;
 }
 
-function MessageText({ text }: Readonly<{ text: string }>): React.JSX.Element {
+function MessageText({
+    text,
+    mentions,
+    meId,
+}: Readonly<{ text: string; mentions: readonly ChatMention[]; meId: Nullable<UUID> }>): React.JSX.Element {
     return (
         <p className="text-body break-words whitespace-pre-wrap text-chat-ink [overflow-wrap:anywhere]">
-            {linkify(text).map((part, index) =>
-                part.type === 'link' ? (
+            {messageParts(text, mentions).map((part, index) =>
+                part.type === 'mention' ? (
+                    <span
+                        key={`mention-${index}`}
+                        className={cn(
+                            'font-semibold text-chat-accent',
+                            part.userId === meId && 'rounded-sm bg-chat-accent-soft px-0.5',
+                        )}
+                    >
+                        {part.text}
+                    </span>
+                ) : part.type === 'link' ? (
                     <a
                         key={`link-${index}`}
                         href={part.href}
@@ -143,6 +164,7 @@ export function MessageBubble({
     onReply,
     onEdit,
     onReport,
+    onPin,
     onReact,
     onDelete,
     onJumpTo,
@@ -152,7 +174,7 @@ export function MessageBubble({
     onMediaLoad,
 }: Readonly<MessageBubbleProps>): React.JSX.Element {
     const t = useChatText();
-    const { translate, locale, timeZone } = useChatContext();
+    const { translate, locale, timeZone, currentUserId } = useChatContext();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [toolbarSide, setToolbarSide] = useState<ToolbarSide>('beside');
     const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -283,7 +305,13 @@ export function MessageBubble({
                                 />
                             </div>
                         )}
-                        {body !== null && body.length > 0 && <MessageText text={body} />}
+                        {body !== null && body.length > 0 && (
+                            <MessageText
+                                text={body}
+                                mentions={message?.mentions ?? pending?.mentions ?? []}
+                                meId={currentUserId ?? null}
+                            />
+                        )}
                     </>
                 )}
                 {meta}
@@ -323,6 +351,13 @@ export function MessageBubble({
                             onReport={() => {
                                 onReport(message);
                             }}
+                            onPin={
+                                onPin === undefined
+                                    ? undefined
+                                    : (pinned): void => {
+                                          onPin(message.id, pinned);
+                                      }
+                            }
                         />
                     </div>
                 )}

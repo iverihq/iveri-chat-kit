@@ -116,6 +116,19 @@ export function InboxRow({
                                     <span className="sr-only">{t('chat.inbox.pinned')}</span>
                                 </span>
                             )}
+                            {conversation.unreadMentionCount > 0 && (
+                                // An @ in the accent even when the conversation is muted: a mention reaches a muted
+                                // person, which is what it is for.
+                                <span
+                                    title={t('chat.inbox.mentioned', { count: conversation.unreadMentionCount })}
+                                    className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-chat-accent text-2xs font-bold text-chat-accent-ink"
+                                >
+                                    <span aria-hidden="true">@</span>
+                                    <span className="sr-only">
+                                        {t('chat.inbox.mentioned', { count: conversation.unreadMentionCount })}
+                                    </span>
+                                </span>
+                            )}
                             {badge.length > 0 && (
                                 <span
                                     className={cn(

@@ -10,6 +10,7 @@ import {
     useDeleteMessage,
     useMarkRead,
     useMessages,
+    usePinMessage,
     useReaction,
     useSendMessage,
 } from '../query/index.js';
@@ -20,6 +21,7 @@ import { ChatComposer, type ChatComposerProps, type ComposerMode } from './ChatC
 import { ChatThemeScope } from './ChatThemeScope.js';
 import { Lightbox } from './Lightbox.js';
 import { MessageList } from './MessageList.js';
+import { PinnedBar } from './PinnedBar.js';
 import { ReportDialog, type ReportTarget } from './ReportDialog.js';
 import { cn, QUIET_BUTTON } from './style.js';
 import { ThreadHeader } from './ThreadHeader.js';
@@ -81,6 +83,7 @@ function ChatThreadView({
     const markRead = useMarkRead(conversationId);
     const reaction = useReaction(conversationId);
     const deletion = useDeleteMessage(conversationId);
+    const pin = usePinMessage(conversationId);
     const sender = useSendMessage(conversationId);
 
     const [mode, setMode] = useState<Nullable<ComposerMode>>(null);
@@ -204,6 +207,17 @@ function ChatThreadView({
 
             {data.isGroup && <CallBanner conversationId={data.id} />}
 
+            <PinnedBar
+                pinned={data.pinnedMessages}
+                canUnpin={data.canPinMessages}
+                onJumpTo={(seq) => {
+                    void jumpTo(seq);
+                }}
+                onUnpin={(messageId) => {
+                    pin.mutate({ messageId, pinned: false });
+                }}
+            />
+
             {data.isRequest && (
                 <div className="border-b border-chat-line bg-chat-surface px-4 py-3 sm:px-6">
                     <p className="text-label font-semibold text-chat-ink">
@@ -242,6 +256,9 @@ function ChatThreadView({
                     }}
                     onReport={(message) => {
                         setReporting({ kind: 'message', messageId: message.id });
+                    }}
+                    onPin={(messageId, pinned) => {
+                        pin.mutate({ messageId, pinned });
                     }}
                     onReact={(messageId, emoji) => {
                         reaction.mutate({ messageId, emoji });

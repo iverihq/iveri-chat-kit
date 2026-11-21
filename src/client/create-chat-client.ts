@@ -251,6 +251,8 @@ export function createChatClient(options: ChatClientOptions): ChatClient {
             request({ method: 'DELETE', path: `/messages/${encode(messageId)}`, query: { for: scope } }),
         react: (messageId, body) => request({ method: 'PUT', path: `/messages/${encode(messageId)}/reactions`, body }),
         unreact: (messageId) => request({ method: 'DELETE', path: `/messages/${encode(messageId)}/reactions` }),
+        pinMessage: (messageId) => request({ method: 'PUT', path: `/messages/${encode(messageId)}/pin` }),
+        unpinMessage: (messageId) => request({ method: 'DELETE', path: `/messages/${encode(messageId)}/pin` }),
         searchMessages: (query, opts) => get('/search/messages', { q: query }, opts),
 
         uploadAttachment: async (file, fields, opts): Promise<ChatAttachment> => {
@@ -271,6 +273,12 @@ export function createChatClient(options: ChatClientOptions): ChatClient {
         getCall: (id, opts) => get(`/calls/${encode(id)}`, undefined, opts),
         getCurrentCall: (id, opts) => get(`/conversations/${encode(id)}/calls/current`, undefined, opts),
         listIncomingCalls: (opts) => get('/me/calls/incoming', undefined, opts),
+        listCallHistory: (query, opts) =>
+            get(
+                '/me/calls',
+                { cursor: query.cursor, limit: query.limit, missed: query.missed === true ? 'true' : undefined },
+                opts,
+            ),
         acceptCall: (id) => request({ method: 'POST', path: `/calls/${encode(id)}/accept` }),
         joinCall: (id) => request({ method: 'POST', path: `/calls/${encode(id)}/join` }),
         declineCall: (id) => request({ method: 'POST', path: `/calls/${encode(id)}/decline` }),
