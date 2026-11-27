@@ -4,6 +4,7 @@ import { Room, RoomEvent, Track, type RemoteTrack } from 'livekit-client';
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 
 import { canShareScreen, isScreenShare, toggleScreenShare } from './screen-share.js';
+import { useCallDevices, type ChatCallDevices } from './use-call-devices.js';
 
 /** What went wrong with the media, as the screen words it: no microphone or camera allowed, or no connection. */
 export type ChatCallMediaFailure = 'permission' | 'connection';
@@ -26,6 +27,8 @@ export interface ChatCallMedia {
     toggleMic: () => void;
     toggleCamera: () => void;
     toggleScreenShare: () => void;
+    /** The microphones, cameras and speakers to switch between, once connected. */
+    devices: ChatCallDevices;
 }
 
 /** The elements a call draws into, owned by the screen and filled here. */
@@ -60,6 +63,9 @@ export function useCallMedia(
     const [isMicOn, setMicOn] = useState(true);
     const [isCameraOn, setCameraOn] = useState(kind === ChatCallKind.VIDEO);
     const [failure, setFailure] = useState<Maybe<ChatCallMediaFailure>>(null);
+    // The room once connected, for the devices; the ref above is what the controls act on.
+    const [liveRoom, setLiveRoom] = useState<Room | null>(null);
+    const devices = useCallDevices(liveRoom);
     const url = join?.url ?? null;
     const token = join?.token ?? null;
 
@@ -123,6 +129,7 @@ export function useCallMedia(
             if (isLeft()) return;
 
             setConnected(true);
+            setLiveRoom(current);
             setHasOther(current.remoteParticipants.size > 0);
 
             try {
@@ -136,6 +143,7 @@ export function useCallMedia(
         return (): void => {
             left.abort();
             room.current = null;
+            setLiveRoom(null);
             setSharingScreen(false);
             setHasOtherScreen(false);
             void current.disconnect();
@@ -173,5 +181,6 @@ export function useCallMedia(
         toggleMic,
         toggleCamera,
         toggleScreenShare: toggleShare,
+        devices,
     };
 }

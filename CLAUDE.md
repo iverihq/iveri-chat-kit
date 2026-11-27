@@ -173,3 +173,26 @@ read "Missed video call from Nino" about her own call. Every call notice now car
 the web thread and the phone thread pass `currentUserId`; a notice from before carries no id and reads as it did.
 `call-busy` and `call-failed` already read truthfully from either side. **A call's length shows only for a completed
 call** (`callHistoryDuration`): one answered and never connected ended `failed` and drew "· 0:00".
+
+## Choosing the microphone, camera and speaker (2026-11-27, 0.13.0)
+
+The calls plan's "switch device", the last unbuilt piece of its web side.
+
+- **One control, one panel.** A devices control sits among the call's controls once connected and opens a panel over
+  them with a select per device kind: microphone always, camera in a video call, speaker only where
+  `supportsAudioOutputSelection()` (Safari on iOS cannot route a call's sound, so the row is absent rather than refused).
+  The panel is placed against the controls' row, not the button, so it stays on a 375px screen.
+- **Lists are read without asking again** (`Room.getLocalDevices(kind, false)`): the call already asked for the
+  microphone, and a second prompt over a call reads as a fault. They are read again on `MediaDevicesChanged`,
+  `ActiveDeviceChanged` (LiveKit switches by itself when the device in use is unplugged) and `LocalTrackPublished`
+  (names appear once the microphone is granted).
+- **What is in use is what LiveKit reports**; before any switch it reports nothing and the browser's default is in use,
+  which Chrome lists as `default` and Safari and Firefox do not list, so the first entry stands for it
+  (`callDeviceChoice`). An entry with no id (a browser not yet allowed the microphone) cannot be chosen and is left
+  out; one with no name is "Device 2".
+- **A refused switch reads back what is in use**, so the select never shows a device the call is not using.
+- **A speaker switch reaches every remote `<audio>`**: LiveKit sets the sink on each attached element of each remote
+  participant and on any subscribed later, so the 1:1 `<audio>` and a group's one-per-person elements all follow.
+- **Choosing leaves the panel open**, so a person can try one microphone after another while talking; Escape, the
+  control again or a press outside closes it.
+- **Not on the phone screens**: a phone has one microphone and switches its speaker and camera its own way.
