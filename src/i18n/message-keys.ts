@@ -132,6 +132,12 @@ const INTERFACE_KEYS = [
     'chat.call.stop-sharing',
     'chat.call.sharing',
     'chat.call.sharing-mine',
+    'chat.call.devices',
+    'chat.call.device.microphone',
+    'chat.call.device.camera',
+    'chat.call.device.speaker',
+    'chat.call.device.unnamed',
+    'chat.call.devices.none',
 
     'chat.common.cancel',
     'chat.common.close',

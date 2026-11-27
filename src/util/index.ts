@@ -1,4 +1,5 @@
 export * from './calendar.js';
+export * from './call-devices.js';
 export * from './call-history.js';
 export * from './call.js';
 export * from './excerpt.js';

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import type { ChatCallStageCandidate } from '../util/index.js';
 
 import { canShareScreen, isScreenShare, toggleScreenShare } from './screen-share.js';
+import { useCallDevices, type ChatCallDevices } from './use-call-devices.js';
 import type { ChatCallMediaFailure } from './use-call-media.js';
 
 /** Somebody else in a group call's room, as its screen draws them. */
@@ -32,6 +33,8 @@ export interface ChatGroupCallMedia {
     toggleMic: () => void;
     toggleCamera: () => void;
     toggleScreenShare: () => void;
+    /** The microphones, cameras and speakers to switch between, once connected. */
+    devices: ChatCallDevices;
 }
 
 /** The elements a group call draws into, owned by the screen and filled here. */
@@ -91,6 +94,9 @@ export function useGroupCallMedia(
     const [isMicOn, setMicOn] = useState(true);
     const [isCameraOn, setCameraOn] = useState(kind === ChatCallKind.VIDEO);
     const [failure, setFailure] = useState<Maybe<ChatCallMediaFailure>>(null);
+    // The room once connected, for the devices; the ref above is what the controls act on.
+    const [liveRoom, setLiveRoom] = useState<Room | null>(null);
+    const devices = useCallDevices(liveRoom);
     const [isSharingScreen, setSharingScreen] = useState(false);
     const [canShare] = useState(canShareScreen);
     const url = join?.url ?? null;
@@ -168,6 +174,7 @@ export function useGroupCallMedia(
             if (isLeft()) return;
 
             setConnected(true);
+            setLiveRoom(current);
             refresh();
 
             try {
@@ -181,6 +188,7 @@ export function useGroupCallMedia(
         return (): void => {
             left.abort();
             room.current = null;
+            setLiveRoom(null);
             setSharingScreen(false);
             void current.disconnect();
         };
@@ -216,5 +224,6 @@ export function useGroupCallMedia(
         toggleMic,
         toggleCamera,
         toggleScreenShare: toggleShare,
+        devices,
     };
 }

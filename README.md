@@ -286,6 +286,10 @@ import { ChatCallLayer } from '@iveri/chat-kit/web-call';
   browser has `getDisplayMedia` (not on a phone). A shared screen is drawn whole and large with who is sharing it; in a
   group it takes the large place from the speaker. The browser's own "Stop sharing" ends it too. The screen's sound is
   not sent. The phone screens show a screen shared from a browser but never share one.
+- **Choosing the microphone, camera and speaker** (0.13.0): both web call screens have a devices control once connected.
+  It lists the browser's microphones, its cameras in a video call, and its speakers where the browser can route a
+  call's sound (`supportsAudioOutputSelection`; not Safari on a phone), and switches through LiveKit while the call goes
+  on. `useCallDevices` and the headless `callDeviceChoice` are exported for an app drawing its own screen.
 - **Nothing is asked about calls while nobody is signed in** (`currentUserId` null), so a layer mounted before sign-in
   does not poll `GET /me/calls/incoming` into a 401 every four seconds.
 - **The kit never decides how a call ended.** Leaving the room only leaves it; `chat-api` hears it from LiveKit and the

@@ -389,3 +389,15 @@ export function ScreenShareOffIcon(props: IconProps): React.JSX.Element {
         </Glyph>
     );
 }
+
+/** Three sliders: the devices a call uses. */
+export function DevicesIcon(props: IconProps): React.JSX.Element {
+    return (
+        <Glyph {...props}>
+            <path d="M4 5.5h12M4 10h12M4 14.5h12" />
+            <circle cx="7.5" cy="5.5" r="1.6" fill="currentColor" />
+            <circle cx="12.5" cy="10" r="1.6" fill="currentColor" />
+            <circle cx="8.5" cy="14.5" r="1.6" fill="currentColor" />
+        </Glyph>
+    );
+}

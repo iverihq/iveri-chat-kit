@@ -21,6 +21,11 @@ type Handler = (...args: unknown[]) => void;
 const rooms = vi.hoisted(() => ({
     connected: [] as { url: string; token: string }[],
     left: 0,
+    /** What the browser lists, by kind; a test fills it before the call connects. */
+    devices: new Map<string, { deviceId: string; label: string }[]>(),
+    /** Every device switch the screen asked LiveKit for. */
+    switched: [] as [string, string][],
+    canChooseSpeaker: true,
     /** The room the screen made last, so a test can play LiveKit's events into it. */
     current: null as null | {
         emit: (event: string, ...args: unknown[]) => void;
@@ -31,6 +36,11 @@ const rooms = vi.hoisted(() => ({
 
 vi.mock('livekit-client', () => {
     class Room {
+        static getLocalDevices(kind: string): Promise<{ deviceId: string; label: string }[]> {
+            return Promise.resolve(rooms.devices.get(kind) ?? []);
+        }
+
+        active = new Map<string, string>();
         remoteParticipants = new Map<string, unknown>();
         handlers = new Map<string, Handler[]>();
         shares: boolean[] = [];
@@ -54,6 +64,27 @@ vi.mock('livekit-client', () => {
             this.handlers.set(event, [...(this.handlers.get(event) ?? []), handler]);
 
             return this;
+        }
+
+        off(event: string, handler: Handler): this {
+            this.handlers.set(
+                event,
+                (this.handlers.get(event) ?? []).filter((known) => known !== handler),
+            );
+
+            return this;
+        }
+
+        getActiveDevice(kind: string): string | undefined {
+            return this.active.get(kind);
+        }
+
+        switchActiveDevice(kind: string, deviceId: string): Promise<boolean> {
+            rooms.switched.push([kind, deviceId]);
+            this.active.set(kind, deviceId);
+            this.emit('active-device-changed', kind, deviceId);
+
+            return Promise.resolve(true);
         }
 
         emit(event: string, ...args: unknown[]): void {
@@ -86,7 +117,10 @@ vi.mock('livekit-client', () => {
             ActiveSpeakersChanged: 'active-speakers-changed',
             LocalTrackPublished: 'local-track-published',
             LocalTrackUnpublished: 'local-track-unpublished',
+            MediaDevicesChanged: 'media-devices-changed',
+            ActiveDeviceChanged: 'active-device-changed',
         },
+        supportsAudioOutputSelection: (): boolean => rooms.canChooseSpeaker,
         Track: {
             Kind: { Video: 'video', Audio: 'audio' },
             Source: { Camera: 'camera', ScreenShare: 'screen_share' },
@@ -205,6 +239,9 @@ beforeEach(() => {
     rooms.connected = [];
     rooms.left = 0;
     rooms.current = null;
+    rooms.devices = new Map();
+    rooms.switched = [];
+    rooms.canChooseSpeaker = true;
 });
 
 describe('ChatCallLayer', () => {
@@ -369,6 +406,84 @@ describe('ChatCallLayer', () => {
         } finally {
             restore();
         }
+    });
+
+    it('lists the microphones, cameras and speakers, and switches to the one chosen', async () => {
+        rooms.devices = new Map(
+            Object.entries({
+                audioinput: [
+                    { deviceId: 'default', label: 'Default - Built-in microphone' },
+                    { deviceId: 'headset-mic', label: 'Headset' },
+                ],
+                videoinput: [{ deviceId: 'cam-a', label: '' }],
+                audiooutput: [{ deviceId: 'default', label: 'Built-in speakers' }],
+            }),
+        );
+        const answered = call({ status: ChatCallStatus.ACTIVE }, true);
+        const h = harness({ incoming: [call({}, true)] });
+        h.stub.on('POST', `/calls/${CALL}/accept`, () => ({ body: join(answered) }));
+        h.stub.on('GET', `/calls/${CALL}`, () => ({ body: answered }));
+
+        render(<ChatCallLayer />, { wrapper: h.wrapper });
+        await userEvent.click(await screen.findByRole('button', { name: /chat.call.answer/u }));
+        const control = await screen.findByRole('button', { name: 'chat.call.devices', expanded: false });
+        await userEvent.click(control);
+
+        const panel = screen.getByRole('group', { name: 'chat.call.devices' });
+        const microphone = within(panel).getByRole('combobox', { name: 'chat.call.device.microphone' });
+        await waitFor(() => {
+            expect(within(microphone).getAllByRole('option')).toHaveLength(2);
+        });
+        expect(microphone).toHaveValue('default');
+        // A camera the browser gave no name is numbered rather than left blank.
+        expect(within(panel).getByRole('option', { name: 'chat.call.device.unnamed {"index":1}' })).toBeInTheDocument();
+        expect(within(panel).getByRole('combobox', { name: 'chat.call.device.speaker' })).toBeInTheDocument();
+
+        await userEvent.selectOptions(microphone, 'headset-mic');
+        expect(rooms.switched).toEqual([['audioinput', 'headset-mic']]);
+        expect(microphone).toHaveValue('headset-mic');
+
+        await userEvent.keyboard('{Escape}');
+        expect(screen.queryByRole('group', { name: 'chat.call.devices' })).not.toBeInTheDocument();
+    });
+
+    it('offers no camera in a voice call, and no speaker where the browser cannot switch one', async () => {
+        rooms.canChooseSpeaker = false;
+        rooms.devices = new Map(
+            Object.entries({
+                audioinput: [{ deviceId: 'mic-a', label: 'Microphone' }],
+                videoinput: [{ deviceId: 'cam-a', label: 'Camera' }],
+                audiooutput: [{ deviceId: 'out-a', label: 'Speakers' }],
+            }),
+        );
+        const answered = call({ status: ChatCallStatus.ACTIVE, kind: ChatCallKind.VOICE }, true);
+        const h = harness({ incoming: [call({ kind: ChatCallKind.VOICE }, true)] });
+        h.stub.on('POST', `/calls/${CALL}/accept`, () => ({ body: join(answered) }));
+        h.stub.on('GET', `/calls/${CALL}`, () => ({ body: answered }));
+
+        render(<ChatCallLayer />, { wrapper: h.wrapper });
+        await userEvent.click(await screen.findByRole('button', { name: /chat.call.answer/u }));
+        await userEvent.click(await screen.findByRole('button', { name: 'chat.call.devices' }));
+
+        const panel = screen.getByRole('group', { name: 'chat.call.devices' });
+        expect(await within(panel).findByRole('combobox', { name: 'chat.call.device.microphone' })).toHaveValue(
+            'mic-a',
+        );
+        expect(within(panel).queryByRole('combobox', { name: 'chat.call.device.camera' })).not.toBeInTheDocument();
+        expect(within(panel).queryByRole('combobox', { name: 'chat.call.device.speaker' })).not.toBeInTheDocument();
+    });
+
+    it('says so when the browser lists no device at all', async () => {
+        const answered = call({ status: ChatCallStatus.ACTIVE }, true);
+        const h = harness({ incoming: [call({}, true)] });
+        h.stub.on('POST', `/calls/${CALL}/accept`, () => ({ body: join(answered) }));
+        h.stub.on('GET', `/calls/${CALL}`, () => ({ body: answered }));
+
+        render(<ChatCallLayer />, { wrapper: h.wrapper });
+        await userEvent.click(await screen.findByRole('button', { name: /chat.call.answer/u }));
+        await userEvent.click(await screen.findByRole('button', { name: 'chat.call.devices' }));
+
+        expect(screen.getByText('chat.call.devices.none')).toBeInTheDocument();
     });
 
     it("shows the other person's shared screen whole, and names who is sharing", async () => {

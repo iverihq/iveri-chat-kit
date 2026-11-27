@@ -11,6 +11,7 @@ import { ChatThemeScope } from '../web/ChatThemeScope.js';
 import { HangUpIcon, MicIcon, MicOffIcon, VideoIcon, VideoOffIcon } from '../web/icons.js';
 import { cn, FOCUS_RING } from '../web/style.js';
 
+import { CallDevicesButton } from './CallDevicesButton.js';
 import { ScreenShareButton, SharingMyScreen } from './ScreenShareButton.js';
 import { useCallMedia } from './use-call-media.js';
 
@@ -192,6 +193,13 @@ export function ChatCallScreen({ callId, join, onClose }: Readonly<ChatCallScree
                             <ScreenShareButton
                                 isSharing={media.isSharingScreen}
                                 onToggle={media.toggleScreenShare}
+                                className={CONTROL}
+                            />
+                        )}
+                        {media.isConnected && (
+                            <CallDevicesButton
+                                devices={media.devices}
+                                hasCamera={kind === ChatCallKind.VIDEO}
                                 className={CONTROL}
                             />
                         )}
